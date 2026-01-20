@@ -1,0 +1,146 @@
+'use client';
+
+import { motion } from 'framer-motion';
+import { Header } from '@/components/layout/Header';
+import { BottomNav } from '@/components/layout/BottomNav';
+import { useSessionStore } from '@/stores';
+
+export default function ProfilePage() {
+  const profile = useSessionStore((state) => state.profile);
+  const anonymousId = useSessionStore((state) => state.anonymousId);
+
+  // Mock stats for v0
+  const stats = {
+    totalPoints: profile?.total_points ?? 0,
+    packsOpened: profile?.total_packs_opened ?? 0,
+    correctPicks: profile?.total_correct_picks ?? 0,
+    totalPicks: profile?.total_picks_made ?? 0,
+    currentStreak: profile?.current_streak ?? 0,
+    longestStreak: profile?.longest_streak ?? 0,
+    bestRank: profile?.best_weekly_rank ?? '-',
+    accuracy: profile?.total_picks_made
+      ? ((profile.total_correct_picks / profile.total_picks_made) * 100).toFixed(1)
+      : '0',
+  };
+
+  return (
+    <main className="flex-1 flex flex-col min-h-screen">
+      <Header />
+
+      <div className="flex-1 flex flex-col p-4 pb-20">
+        {/* Avatar & Name */}
+        <motion.div
+          className="text-center mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="w-20 h-20 mx-auto mb-3 bg-game-secondary rounded-full flex items-center justify-center border-4 border-game-accent">
+            <span className="text-3xl">👤</span>
+          </div>
+          <h1 className="text-xl font-bold">
+            {profile?.username ?? 'Anonymous Player'}
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
+            ID: {anonymousId?.slice(0, 8)}...
+          </p>
+        </motion.div>
+
+        {/* Main Stats */}
+        <motion.div
+          className="card-pixel mb-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-game-gold">{stats.totalPoints}</p>
+              <p className="text-xs text-gray-400">Total Points</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold">{stats.packsOpened}</p>
+              <p className="text-xs text-gray-400">Packs Opened</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Accuracy & Streaks */}
+        <motion.div
+          className="grid grid-cols-2 gap-3 mb-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="card-pixel text-center">
+            <p className="text-2xl font-bold">{stats.accuracy}%</p>
+            <p className="text-xs text-gray-400">Accuracy</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {stats.correctPicks}/{stats.totalPicks} picks
+            </p>
+          </div>
+          <div className="card-pixel text-center">
+            <p className="text-2xl font-bold">{stats.currentStreak}</p>
+            <p className="text-xs text-gray-400">Current Streak</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Best: {stats.longestStreak}
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Best Performance */}
+        <motion.div
+          className="card-pixel mb-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <h3 className="text-sm font-bold mb-3">Best Performance</h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-400">Best Weekly Rank</p>
+              <p className="text-lg font-bold">#{stats.bestRank}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-400">Best Week Points</p>
+              <p className="text-lg font-bold text-game-gold">
+                {profile?.best_weekly_points ?? 0}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Recent Activity */}
+        <motion.div
+          className="card-pixel"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <h3 className="text-sm font-bold mb-3">Recent Activity</h3>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-500 text-center py-4">
+              No recent activity yet
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Account Actions */}
+        <motion.div
+          className="mt-6 space-y-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <button className="w-full btn-pixel-secondary">
+            Create Account
+          </button>
+          <p className="text-xs text-center text-gray-500">
+            Save your progress and compete on the leaderboard
+          </p>
+        </motion.div>
+      </div>
+
+      <BottomNav />
+    </main>
+  );
+}

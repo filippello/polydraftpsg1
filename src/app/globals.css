@@ -2,26 +2,266 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   Pixel Art Theme for Polydraft
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base colors - always dark theme */
+  --background: #1a1a2e;
+  --foreground: #f1f5f9;
+
+  /* Game colors */
+  --game-bg: #1a1a2e;
+  --game-primary: #16213e;
+  --game-secondary: #0f3460;
+  --game-accent: #e94560;
+  --game-gold: #ffd700;
+  --game-success: #4ade80;
+  --game-failure: #6b7280;
+
+  /* Pixel size base */
+  --pixel-size: 4px;
 }
 
-@media (prefers-color-scheme: dark) {
+/* Force dark theme always */
+@media (prefers-color-scheme: light) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1a1a2e;
+    --foreground: #f1f5f9;
   }
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
+
+/* ============================================
+   Pixel Art Rendering
+   ============================================ */
+
+.pixel-art,
+.pixel-sprite,
+canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Pixel-perfect borders */
+  .border-pixel {
+    border-width: 2px;
+    border-style: solid;
+  }
+
+  /* Retro text shadow */
+  .text-shadow-pixel {
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  /* Glass morphism for cards */
+  .glass {
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Hide scrollbar but allow scrolling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Preserve 3D for card flips */
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  /* Gradient text */
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 50%, #ffd700 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* ============================================
+   Component Base Styles
+   ============================================ */
+
+@layer components {
+  /* Pixel button base */
+  .btn-pixel {
+    @apply relative px-6 py-3 font-bold uppercase tracking-wider;
+    @apply bg-game-accent text-white;
+    @apply border-2 border-black;
+    @apply shadow-pixel active:shadow-none active:translate-x-1 active:translate-y-1;
+    @apply transition-all duration-100;
+    @apply hover:brightness-110;
+  }
+
+  .btn-pixel-secondary {
+    @apply btn-pixel bg-game-secondary;
+  }
+
+  .btn-pixel-gold {
+    @apply btn-pixel bg-game-gold text-black;
+  }
+
+  /* Card base */
+  .card-pixel {
+    @apply relative p-4;
+    @apply bg-card-bg border-2 border-card-border;
+    @apply shadow-pixel;
+  }
+
+  /* Glowing effect */
+  .glow-gold {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 5px var(--game-gold), 0 0 10px var(--game-gold);
+    }
+    50% {
+      box-shadow: 0 0 20px var(--game-gold), 0 0 30px var(--game-gold);
+    }
+  }
+
+  /* Pack sprite placeholder */
+  .pack-sprite {
+    @apply relative w-32 h-44 bg-game-primary border-4 border-game-accent;
+    @apply flex items-center justify-center;
+    @apply shadow-pixel-lg;
+    background: linear-gradient(
+      135deg,
+      var(--game-primary) 0%,
+      var(--game-secondary) 50%,
+      var(--game-primary) 100%
+    );
+  }
+
+  /* Event card placeholder */
+  .event-card {
+    @apply relative w-full aspect-[3/4] bg-card-bg border-2 border-card-border;
+    @apply flex flex-col items-center justify-between p-4;
+    @apply shadow-pixel;
+  }
+
+  /* Probability badge */
+  .prob-badge {
+    @apply inline-flex items-center px-2 py-1;
+    @apply text-xs font-bold;
+    @apply border border-current rounded-sm;
+  }
+
+  /* Status indicator */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-pending {
+    @apply status-dot bg-yellow-500 animate-pulse;
+  }
+
+  .status-resolved {
+    @apply status-dot bg-green-500;
+  }
+
+  .status-win {
+    @apply status-dot bg-game-success;
+  }
+
+  .status-lose {
+    @apply status-dot bg-game-failure;
+  }
+}
+
+/* ============================================
+   CRT Scanline Effect (optional)
+   ============================================ */
+
+.crt-effect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ============================================
+   Safe Area for Mobile
+   ============================================ */
+
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.safe-area-inset-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* ============================================
+   Selection Color
+   ============================================ */
+
+::selection {
+  background: var(--game-accent);
+  color: white;
+}
+
+::-moz-selection {
+  background: var(--game-accent);
+  color: white;
 }

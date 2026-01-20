@@ -1,101 +1,122 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { PackSprite } from '@/components/sprites/PackSprite';
+import { Header } from '@/components/layout/Header';
+import { BottomNav } from '@/components/layout/BottomNav';
+import { useSessionStore } from '@/stores';
+
+export default function HomePage() {
+  const profile = useSessionStore((state) => state.profile);
+  const [isHovering, setIsHovering] = useState(false);
+
+  // Mock data for now - will be replaced with real data
+  const hasActivePack = false;
+  const weeklyPoints = profile?.total_points ?? 0;
+  const weeklyRank = profile?.best_weekly_rank ?? '-';
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main className="flex-1 flex flex-col">
+      <Header />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="flex-1 flex flex-col items-center justify-center p-4 pb-20">
+        {/* Weekly Stats */}
+        <div className="w-full max-w-sm mb-8">
+          <div className="card-pixel">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wider">This Week</p>
+                <p className="text-2xl font-bold text-game-gold">{weeklyPoints} pts</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-400 uppercase tracking-wider">Rank</p>
+                <p className="text-2xl font-bold">#{weeklyRank}</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {/* Pack Area */}
+        <div className="flex-1 flex flex-col items-center justify-center">
+          {hasActivePack ? (
+            // Active pack - show progress
+            <div className="text-center">
+              <p className="text-sm text-gray-400 mb-4">Pack in progress</p>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="cursor-pointer"
+              >
+                <PackSprite type="sports" size="lg" glowing />
+              </motion.div>
+              <p className="mt-4 text-lg font-bold">2/5 resolved</p>
+              <Link
+                href="/queue"
+                className="mt-4 btn-pixel inline-block"
+              >
+                View Queue
+              </Link>
+            </div>
+          ) : (
+            // No active pack - show open button
+            <div className="text-center">
+              <p className="text-sm text-gray-400 mb-4">Weekly Pack Available!</p>
+
+              <motion.div
+                className="cursor-pointer"
+                onHoverStart={() => setIsHovering(true)}
+                onHoverEnd={() => setIsHovering(false)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                animate={isHovering ? { y: [0, -5, 0] } : {}}
+                transition={{ duration: 0.5, repeat: isHovering ? Infinity : 0 }}
+              >
+                <Link href="/pack/open/sports">
+                  <PackSprite
+                    type="sports"
+                    size="lg"
+                    glowing={isHovering}
+                  />
+                </Link>
+              </motion.div>
+
+              <motion.p
+                className="mt-6 text-lg font-bold"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                Tap to Open
+              </motion.p>
+
+              <p className="mt-2 text-xs text-gray-500">
+                5 events • Make your picks • Win points
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Stats */}
+        <div className="w-full max-w-sm mt-8">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="card-pixel py-2">
+              <p className="text-lg font-bold">{profile?.total_packs_opened ?? 0}</p>
+              <p className="text-xs text-gray-400">Packs</p>
+            </div>
+            <div className="card-pixel py-2">
+              <p className="text-lg font-bold">{profile?.total_correct_picks ?? 0}</p>
+              <p className="text-xs text-gray-400">Correct</p>
+            </div>
+            <div className="card-pixel py-2">
+              <p className="text-lg font-bold">{profile?.current_streak ?? 0}</p>
+              <p className="text-xs text-gray-400">Streak</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <BottomNav />
+    </main>
   );
 }
