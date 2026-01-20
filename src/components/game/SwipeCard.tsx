@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import type { Event, Outcome } from '@/types';
 import { formatProbability, getTier, getTierColor } from '@/lib/scoring/calculator';
@@ -97,14 +98,14 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
         </motion.div>
 
         {/* Card content */}
-        <div className="h-full flex flex-col p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
+        <div className="h-full flex flex-col">
+          {/* Floating Header over image */}
+          <div className="absolute top-0 left-0 right-0 z-10 p-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs px-3 py-1 bg-game-secondary rounded-full uppercase font-bold">
+              <span className="text-xs px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full uppercase font-bold text-white">
                 {event.subcategory || event.category}
               </span>
-              {/* Rarity badge - show for all rarities */}
+              {/* Rarity badge */}
               <span
                 className="text-xs px-3 py-1 rounded-full uppercase font-bold text-white"
                 style={{ backgroundColor: rarityConfig.hex }}
@@ -112,81 +113,97 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
                 {rarityConfig.name}
               </span>
             </div>
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-white bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
               {position}/{total}
             </span>
           </div>
 
-          {/* Main content */}
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            {/* Event icon/image placeholder */}
-            <div className="w-20 h-20 bg-game-secondary rounded-full flex items-center justify-center mb-6">
-              <span className="text-4xl">
-                {event.subcategory === 'nba' ? '🏀' :
-                 event.subcategory === 'nfl' ? '🏈' :
-                 event.subcategory === 'epl' ? '⚽' :
-                 event.subcategory === 'f1' ? '🏎️' :
-                 event.subcategory === 'laliga' ? '⚽' :
-                 event.subcategory === 'ucl' ? '⚽' :
-                 event.subcategory === 'mlb' ? '⚾' :
-                 event.subcategory === 'tennis' ? '🎾' :
-                 event.subcategory === 'international' ? '🌍' : '🎯'}
-              </span>
-            </div>
+          {/* Image area with 16:10 aspect ratio */}
+          <div className="relative w-full aspect-[16/10] overflow-hidden">
+            {event.image_url ? (
+              <Image
+                src={event.image_url}
+                alt={event.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 400px) 100vw, 400px"
+              />
+            ) : (
+              <div className="w-full h-full bg-game-secondary flex items-center justify-center">
+                <span className="text-5xl">
+                  {event.subcategory === 'nba' ? '🏀' :
+                   event.subcategory === 'nfl' ? '🏈' :
+                   event.subcategory === 'epl' ? '⚽' :
+                   event.subcategory === 'f1' ? '🏎️' :
+                   event.subcategory === 'laliga' ? '⚽' :
+                   event.subcategory === 'ucl' ? '⚽' :
+                   event.subcategory === 'mlb' ? '⚾' :
+                   event.subcategory === 'tennis' ? '🎾' :
+                   event.subcategory === 'international' ? '🌍' : '🎯'}
+                </span>
+              </div>
+            )}
+            {/* Gradient overlay for text readability */}
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card-bg to-transparent" />
+          </div>
 
+          {/* Information panel */}
+          <div className="flex-1 flex flex-col p-4 bg-card-bg/95">
             {/* Title */}
-            <h2 className="text-xl font-bold mb-6 leading-tight">
+            <h2 className="text-xl font-bold mb-4 leading-tight text-center">
               {event.title}
             </h2>
 
             {/* VS display */}
-            {isVsMatch ? (
-              <div className="w-full flex items-center justify-center gap-4">
-                <div className="flex-1 text-right">
-                  <p className="font-bold text-lg" style={{ color: colorA }}>
-                    {event.outcome_a_label}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {formatProbability(event.outcome_a_probability)}
-                  </p>
+            <div className="flex-1 flex items-center justify-center">
+              {isVsMatch ? (
+                <div className="w-full flex items-center justify-center gap-4">
+                  <div className="flex-1 text-right">
+                    <p className="font-bold text-lg" style={{ color: colorA }}>
+                      {event.outcome_a_label}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      {formatProbability(event.outcome_a_probability)}
+                    </p>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-600">VS</div>
+                  <div className="flex-1 text-left">
+                    <p className="font-bold text-lg" style={{ color: colorB }}>
+                      {event.outcome_b_label}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      {formatProbability(event.outcome_b_probability)}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-gray-600">VS</div>
-                <div className="flex-1 text-left">
-                  <p className="font-bold text-lg" style={{ color: colorB }}>
-                    {event.outcome_b_label}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {formatProbability(event.outcome_b_probability)}
-                  </p>
+              ) : (
+                <div className="flex items-center gap-8">
+                  <div className="text-center">
+                    <p className="font-bold text-xl text-green-500">YES</p>
+                    <p className="text-sm text-gray-400">
+                      {formatProbability(event.outcome_a_probability)}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-xl text-red-500">NO</p>
+                    <p className="text-sm text-gray-400">
+                      {formatProbability(event.outcome_b_probability)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-8">
-                <div className="text-center">
-                  <p className="font-bold text-xl text-green-500">YES</p>
-                  <p className="text-sm text-gray-400">
-                    {formatProbability(event.outcome_a_probability)}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="font-bold text-xl text-red-500">NO</p>
-                  <p className="text-sm text-gray-400">
-                    {formatProbability(event.outcome_b_probability)}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Swipe hints */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-outcome-b">
-              <span>←</span>
-              <span className="font-bold">{event.outcome_b_label}</span>
+              )}
             </div>
-            <div className="flex items-center gap-2 text-outcome-a">
-              <span className="font-bold">{event.outcome_a_label}</span>
-              <span>→</span>
+
+            {/* Swipe hints */}
+            <div className="flex items-center justify-between text-sm pt-2">
+              <div className="flex items-center gap-2 text-outcome-b">
+                <span>←</span>
+                <span className="font-bold">{event.outcome_b_label}</span>
+              </div>
+              <div className="flex items-center gap-2 text-outcome-a">
+                <span className="font-bold">{event.outcome_a_label}</span>
+                <span>→</span>
+              </div>
             </div>
           </div>
         </div>
