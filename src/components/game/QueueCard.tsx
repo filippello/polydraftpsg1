@@ -24,7 +24,9 @@ export function QueueCard({
   const pickedLabel =
     pick.picked_outcome === 'a'
       ? pick.event.outcome_a_label
-      : pick.event.outcome_b_label;
+      : pick.picked_outcome === 'b'
+        ? pick.event.outcome_b_label
+        : pick.event.outcome_draw_label || 'Draw';
 
   // Determine if this is the "chest ready" state
   const isChestReady = isNext && pick.is_resolved && !isRevealed;

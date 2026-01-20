@@ -139,11 +139,15 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
           const probability =
             outcome === 'a'
               ? event.outcome_a_probability
-              : event.outcome_b_probability;
+              : outcome === 'b'
+                ? event.outcome_b_probability
+                : event.outcome_draw_probability ?? 0;
           const oppositeProbability =
             outcome === 'a'
               ? event.outcome_b_probability
-              : event.outcome_a_probability;
+              : outcome === 'b'
+                ? event.outcome_a_probability
+                : 1 - (event.outcome_draw_probability ?? 0);
 
           return {
             id: `${packId}-pick-${index + 1}`,
@@ -177,7 +181,9 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
           probabilityAtPick:
             outcome === 'a'
               ? event.outcome_a_probability
-              : event.outcome_b_probability,
+              : outcome === 'b'
+                ? event.outcome_b_probability
+                : event.outcome_draw_probability ?? 0,
         }));
         const maxPoints = calculateMaxPotentialPoints(picks);
         const combinedProb = calculateCombinedProbability(picks);
@@ -353,20 +359,30 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                     const rarityConfig = getRarityConfig(rarity);
                     const showGlow = rarity !== 'common';
 
+                    const outcomeLabel =
+                      outcome === 'a'
+                        ? event.outcome_a_label
+                        : outcome === 'b'
+                          ? event.outcome_b_label
+                          : event.outcome_draw_label || 'Draw';
+
+                    const outcomeClasses =
+                      outcome === 'a'
+                        ? 'bg-outcome-a/20 text-outcome-a'
+                        : outcome === 'b'
+                          ? 'bg-outcome-b/20 text-outcome-b'
+                          : 'bg-gray-500/20 text-gray-400';
+
                     return (
                       <div
                         key={event.id}
-                        className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold border-2 ${
-                          outcome === 'a'
-                            ? 'bg-outcome-a/20 text-outcome-a'
-                            : 'bg-outcome-b/20 text-outcome-b'
-                        }`}
+                        className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold border-2 ${outcomeClasses}`}
                         style={{
                           borderColor: rarityConfig.hex,
                           boxShadow: showGlow ? `0 0 10px ${rarityConfig.hex}, 0 0 20px ${rarityConfig.hex}50` : undefined,
                         }}
                       >
-                        {outcome === 'a' ? event.outcome_a_label : event.outcome_b_label}
+                        {outcomeLabel}
                       </div>
                     );
                   })}
@@ -495,10 +511,14 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
               {pickedEvents.map(({ event, outcome }, index) => {
                 const prob = outcome === 'a'
                   ? event.outcome_a_probability
-                  : event.outcome_b_probability;
+                  : outcome === 'b'
+                    ? event.outcome_b_probability
+                    : event.outcome_draw_probability ?? 0;
                 const label = outcome === 'a'
                   ? event.outcome_a_label
-                  : event.outcome_b_label;
+                  : outcome === 'b'
+                    ? event.outcome_b_label
+                    : event.outcome_draw_label || 'Draw';
                 // Get short label (first 3 letters or abbreviation)
                 const shortLabel = label.length > 4
                   ? label.substring(0, 3).toUpperCase()

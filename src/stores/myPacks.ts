@@ -14,7 +14,7 @@ export interface StoredPack {
 
 export interface PickPreview {
   eventId: string;
-  pickedOutcome: 'a' | 'b';
+  pickedOutcome: 'a' | 'b' | 'draw';
   pickedLabel: string;
   isResolved: boolean;
   isRevealed: boolean;
@@ -86,7 +86,11 @@ function computePackStatus(picks: (UserPick & { event: Event })[]): PackStatus {
 function computePickPreview(pick: UserPick & { event: Event }): PickPreview {
   const event = pick.event;
   const pickedLabel =
-    pick.picked_outcome === 'a' ? event.outcome_a_label : event.outcome_b_label;
+    pick.picked_outcome === 'a'
+      ? event.outcome_a_label
+      : pick.picked_outcome === 'b'
+        ? event.outcome_b_label
+        : event.outcome_draw_label || 'Draw';
 
   return {
     eventId: pick.event_id,
@@ -357,7 +361,7 @@ export interface ActivePickPreview {
   pickId: string;
   eventTitle: string;
   category: string;
-  pickedOutcome: 'a' | 'b';
+  pickedOutcome: 'a' | 'b' | 'draw';
   pickedLabel: string;
   probabilitySnapshot: number;
   isResolved: boolean;
@@ -388,7 +392,9 @@ export const useActivePickPreviews = (limit: number = 2): { picks: ActivePickPre
       const pickedLabel =
         pick.picked_outcome === 'a'
           ? pick.event.outcome_a_label
-          : pick.event.outcome_b_label;
+          : pick.picked_outcome === 'b'
+            ? pick.event.outcome_b_label
+            : pick.event.outcome_draw_label || 'Draw';
 
       allActivePicks.push({
         packId,

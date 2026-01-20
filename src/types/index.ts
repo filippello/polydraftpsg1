@@ -17,7 +17,7 @@ export interface RarityInfo {
 // ============================================
 
 export type EventStatus = 'upcoming' | 'active' | 'pending_resolution' | 'resolved' | 'cancelled';
-export type Outcome = 'a' | 'b';
+export type Outcome = 'a' | 'b' | 'draw';
 export type EventCategory = 'sports' | 'politics' | 'crypto' | 'economy' | 'entertainment';
 
 export interface Event {
@@ -35,6 +35,11 @@ export interface Event {
   outcome_a_probability: number;
   outcome_b_probability: number;
   last_price_sync_at?: string;
+
+  // Draw support (for football matches)
+  outcome_draw_label?: string;
+  outcome_draw_probability?: number;
+  supports_draw?: boolean;
 
   category: EventCategory;
   subcategory?: string;

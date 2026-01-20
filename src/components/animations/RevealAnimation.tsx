@@ -72,11 +72,17 @@ export function RevealAnimation({ pick, onComplete }: RevealAnimationProps) {
   const pickedLabel =
     pick.picked_outcome === 'a'
       ? pick.event.outcome_a_label
-      : pick.event.outcome_b_label;
+      : pick.picked_outcome === 'b'
+        ? pick.event.outcome_b_label
+        : pick.event.outcome_draw_label || 'Draw';
 
   const winningOutcome = pick.event.winning_outcome;
   const winnerLabel = winningOutcome
-    ? (winningOutcome === 'a' ? pick.event.outcome_a_label : pick.event.outcome_b_label)
+    ? (winningOutcome === 'a'
+        ? pick.event.outcome_a_label
+        : winningOutcome === 'b'
+          ? pick.event.outcome_b_label
+          : pick.event.outcome_draw_label || 'Draw')
     : 'Unknown';
 
   const isWin = pick.is_correct === true;
