@@ -1,4 +1,11 @@
-import type { Event, EventCategory } from '@/types';
+import type { Event, EventCategory, Rarity, RarityInfo } from '@/types';
+import {
+  rollTargetRarity,
+  getEventRarity,
+  calculatePLow,
+  getFallbackRarities,
+  distanceToRarityBin,
+} from '@/lib/rarity';
 
 // Import pool data
 import sportsPool from '@/../data/pools/sports.json';
@@ -36,10 +43,154 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 /**
- * Select random events from a pool
- * Uses Fisher-Yates shuffle and returns the first N events
+ * Pick a random element from an array
+ */
+function pickRandom<T>(array: T[]): T | null {
+  if (array.length === 0) return null;
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+/**
+ * Add rarity info to an event
+ */
+function addRarityInfo(event: Event, targetRarity: Rarity): Event {
+  const pLow = calculatePLow(event.outcome_a_probability, event.outcome_b_probability);
+  const rarity = getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
+
+  const rarityInfo: RarityInfo = {
+    pLow,
+    rarity,
+    targetRarity,
+  };
+
+  return {
+    ...event,
+    rarityInfo,
+  };
+}
+
+/**
+ * Filter events by rarity
+ */
+function filterEventsByRarity(events: Event[], targetRarity: Rarity): Event[] {
+  return events.filter((event) => {
+    const eventRarity = getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
+    return eventRarity === targetRarity;
+  });
+}
+
+/**
+ * Find the closest event to a target rarity bin
+ * Used as fallback when no exact matches exist
+ */
+function findClosestToRarity(events: Event[], targetRarity: Rarity): Event | null {
+  if (events.length === 0) return null;
+
+  let closest: Event | null = null;
+  let minDistance = Infinity;
+
+  for (const event of events) {
+    const pLow = calculatePLow(event.outcome_a_probability, event.outcome_b_probability);
+    const distance = distanceToRarityBin(pLow, targetRarity);
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      closest = event;
+    }
+  }
+
+  return closest;
+}
+
+/**
+ * Select a single event for a target rarity with fallback
+ */
+function selectEventForRarity(
+  availableEvents: Event[],
+  targetRarity: Rarity
+): { event: Event; targetRarity: Rarity } | null {
+  // Try exact match first
+  const matchingEvents = filterEventsByRarity(availableEvents, targetRarity);
+
+  if (matchingEvents.length > 0) {
+    const event = pickRandom(matchingEvents);
+    if (event) {
+      return { event, targetRarity };
+    }
+  }
+
+  // Fallback: try degrading rarity towards common
+  const fallbackRarities = getFallbackRarities(targetRarity);
+
+  for (const fallbackRarity of fallbackRarities) {
+    if (fallbackRarity === targetRarity) continue; // Already tried
+
+    const fallbackEvents = filterEventsByRarity(availableEvents, fallbackRarity);
+    if (fallbackEvents.length > 0) {
+      const event = pickRandom(fallbackEvents);
+      if (event) {
+        return { event, targetRarity };
+      }
+    }
+  }
+
+  // Last resort: find closest event to target rarity
+  const closest = findClosestToRarity(availableEvents, targetRarity);
+  if (closest) {
+    return { event: closest, targetRarity };
+  }
+
+  return null;
+}
+
+/**
+ * Select events from a pool using rarity-based selection
+ * Each card rolls for a target rarity based on drop rates
  */
 export function selectEventsFromPool(pool: EventPool, count: number): Event[] {
+  const now = new Date().toISOString();
+  const selectedEvents: Event[] = [];
+  const usedEventIds = new Set<string>();
+
+  for (let i = 0; i < count; i++) {
+    // Roll target rarity based on drop rates
+    const targetRarity = rollTargetRarity();
+
+    // Filter out already selected events
+    const availableEvents = pool.events.filter((e) => !usedEventIds.has(e.id));
+
+    if (availableEvents.length === 0) {
+      console.warn(`Pool "${pool.name}" ran out of events after selecting ${i} cards`);
+      break;
+    }
+
+    // Select event for this rarity
+    const result = selectEventForRarity(availableEvents, targetRarity);
+
+    if (result) {
+      const eventWithRarity = addRarityInfo(result.event, result.targetRarity);
+
+      // Add timestamps
+      const finalEvent: Event = {
+        ...eventWithRarity,
+        category: eventWithRarity.category as EventCategory,
+        created_at: eventWithRarity.created_at || now,
+        updated_at: eventWithRarity.updated_at || now,
+      };
+
+      selectedEvents.push(finalEvent);
+      usedEventIds.add(result.event.id);
+    }
+  }
+
+  return selectedEvents;
+}
+
+/**
+ * Select random events from a pool (legacy method without rarity)
+ * Kept for backward compatibility
+ */
+export function selectEventsFromPoolRandom(pool: EventPool, count: number): Event[] {
   if (pool.events.length < count) {
     console.warn(
       `Pool "${pool.name}" has only ${pool.events.length} events, but ${count} were requested`
@@ -50,7 +201,6 @@ export function selectEventsFromPool(pool: EventPool, count: number): Event[] {
   const shuffled = shuffleArray(pool.events);
   const now = new Date().toISOString();
 
-  // Add timestamps to events (required by Event type)
   return shuffled.slice(0, count).map((event) => ({
     ...event,
     category: event.category as EventCategory,
@@ -62,6 +212,7 @@ export function selectEventsFromPool(pool: EventPool, count: number): Event[] {
 /**
  * Get events for a pack opening
  * Main entry point for the pack opening flow
+ * Uses rarity-based selection
  */
 export function getEventsForPack(packType: string, count: number = 5): Event[] {
   const pool = getPool(packType);

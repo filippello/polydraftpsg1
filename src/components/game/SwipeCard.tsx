@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import type { Event, Outcome } from '@/types';
 import { formatProbability, getTier, getTierColor } from '@/lib/scoring/calculator';
+import {
+  getEventRarity,
+  getRarityConfig,
+  getRarityBorderClass,
+} from '@/lib/rarity';
 
 interface SwipeCardProps {
   event: Event;
@@ -28,6 +33,13 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
   const tierB = getTier(event.outcome_b_probability);
   const colorA = getTierColor(tierA);
   const colorB = getTierColor(tierB);
+
+  // Get rarity info (from rarityInfo if available, or calculate it)
+  const rarity = event.rarityInfo?.rarity ?? getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
+  const rarityConfig = getRarityConfig(rarity);
+  const rarityBorderClass = getRarityBorderClass(rarity);
+  // Only show glow for rare and above
+  const showGlow = rarity === 'rare' || rarity === 'epic' || rarity === 'legendary';
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = 100;
@@ -63,7 +75,7 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
       }
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <div className="w-full h-full bg-card-bg border-4 border-card-border rounded-2xl overflow-hidden shadow-pixel-lg relative">
+      <div className={`w-full h-full bg-card-bg border-4 ${rarityBorderClass} rounded-2xl overflow-hidden shadow-pixel-lg relative ${showGlow ? rarityConfig.glowClass : ''}`}>
         {/* Left overlay (Option B) */}
         <motion.div
           className="absolute inset-0 bg-outcome-b/30 pointer-events-none z-20 flex items-center justify-center"
@@ -88,9 +100,18 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
         <div className="h-full flex flex-col p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs px-3 py-1 bg-game-secondary rounded-full uppercase font-bold">
-              {event.subcategory || event.category}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-3 py-1 bg-game-secondary rounded-full uppercase font-bold">
+                {event.subcategory || event.category}
+              </span>
+              {/* Rarity badge - show for all rarities */}
+              <span
+                className="text-xs px-3 py-1 rounded-full uppercase font-bold text-white"
+                style={{ backgroundColor: rarityConfig.hex }}
+              >
+                {rarityConfig.name}
+              </span>
+            </div>
             <span className="text-sm text-gray-400">
               {position}/{total}
             </span>
@@ -105,7 +126,11 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
                  event.subcategory === 'nfl' ? '🏈' :
                  event.subcategory === 'epl' ? '⚽' :
                  event.subcategory === 'f1' ? '🏎️' :
-                 event.subcategory === 'laliga' ? '⚽' : '🎯'}
+                 event.subcategory === 'laliga' ? '⚽' :
+                 event.subcategory === 'ucl' ? '⚽' :
+                 event.subcategory === 'mlb' ? '⚾' :
+                 event.subcategory === 'tennis' ? '🎾' :
+                 event.subcategory === 'international' ? '🌍' : '🎯'}
               </span>
             </div>
 

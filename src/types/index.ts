@@ -1,6 +1,18 @@
 // Core game types for Polydraft
 
 // ============================================
+// Rarity Types
+// ============================================
+
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
+export interface RarityInfo {
+  pLow: number;           // min(p1, p2) - underdog probability
+  rarity: Rarity;         // Assigned rarity based on p_low
+  targetRarity?: Rarity;  // Target rarity that was rolled (for pack generation)
+}
+
+// ============================================
 // Event Types
 // ============================================
 
@@ -40,6 +52,9 @@ export interface Event {
 
   created_at: string;
   updated_at: string;
+
+  // Rarity info (populated when event is selected for a pack)
+  rarityInfo?: RarityInfo;
 }
 
 // ============================================

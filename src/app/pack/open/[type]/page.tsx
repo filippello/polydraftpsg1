@@ -13,6 +13,10 @@ import {
   formatProbability,
 } from '@/lib/scoring/calculator';
 import { getEventsForPack } from '@/lib/pools';
+import {
+  getEventRarity,
+  getRarityConfig,
+} from '@/lib/rarity';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
 
 type Phase = 'opening' | 'revealing' | 'swiping' | 'confirming';
@@ -232,32 +236,48 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             exit={{ opacity: 0 }}
           >
             <div className="flex gap-3 flex-wrap justify-center max-w-sm">
-              {events.map((event, index) => (
-                <motion.div
-                  key={event.id}
-                  initial={{ scale: 0, rotate: -180, y: -50 }}
-                  animate={
-                    revealedCards.includes(index)
-                      ? { scale: 1, rotate: 0, y: 0 }
-                      : { scale: 0, rotate: -180, y: -50 }
-                  }
-                  transition={{
-                    type: 'spring',
-                    stiffness: 400,
-                    damping: 25,
-                  }}
-                >
-                  <div className="w-14 h-20 bg-game-primary border-2 border-game-accent rounded-lg flex items-center justify-center shadow-pixel">
-                    <span className="text-xl">
-                      {event.subcategory === 'nba' ? '🏀' :
-                       event.subcategory === 'nfl' ? '🏈' :
-                       event.subcategory === 'epl' ? '⚽' :
-                       event.subcategory === 'f1' ? '🏎️' :
-                       event.subcategory === 'laliga' ? '⚽' : '🎯'}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
+              {events.map((event, index) => {
+                const rarity = event.rarityInfo?.rarity ?? getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
+                const rarityConfig = getRarityConfig(rarity);
+                const showGlow = rarity === 'rare' || rarity === 'epic' || rarity === 'legendary';
+
+                return (
+                  <motion.div
+                    key={event.id}
+                    initial={{ scale: 0, rotate: -180, y: -50 }}
+                    animate={
+                      revealedCards.includes(index)
+                        ? { scale: 1, rotate: 0, y: 0 }
+                        : { scale: 0, rotate: -180, y: -50 }
+                    }
+                    transition={{
+                      type: 'spring',
+                      stiffness: 400,
+                      damping: 25,
+                    }}
+                  >
+                    <div
+                      className="w-14 h-20 bg-game-primary border-2 rounded-lg flex items-center justify-center"
+                      style={{
+                        borderColor: rarityConfig.hex,
+                        boxShadow: showGlow ? `0 0 12px ${rarityConfig.hex}, 0 0 20px ${rarityConfig.hex}60` : undefined,
+                      }}
+                    >
+                      <span className="text-xl">
+                        {event.subcategory === 'nba' ? '🏀' :
+                         event.subcategory === 'nfl' ? '🏈' :
+                         event.subcategory === 'epl' ? '⚽' :
+                         event.subcategory === 'f1' ? '🏎️' :
+                         event.subcategory === 'laliga' ? '⚽' :
+                         event.subcategory === 'ucl' ? '⚽' :
+                         event.subcategory === 'mlb' ? '⚾' :
+                         event.subcategory === 'tennis' ? '🎾' :
+                         event.subcategory === 'international' ? '🌍' : '🎯'}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
             <motion.p
               className="mt-6 text-lg font-bold"
@@ -328,18 +348,28 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                  {pickedEvents.map(({ event, outcome }) => (
-                    <div
-                      key={event.id}
-                      className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold ${
-                        outcome === 'a'
-                          ? 'bg-outcome-a/20 text-outcome-a border border-outcome-a'
-                          : 'bg-outcome-b/20 text-outcome-b border border-outcome-b'
-                      }`}
-                    >
-                      {outcome === 'a' ? event.outcome_a_label : event.outcome_b_label}
-                    </div>
-                  ))}
+                  {pickedEvents.map(({ event, outcome }) => {
+                    const rarity = event.rarityInfo?.rarity ?? getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
+                    const rarityConfig = getRarityConfig(rarity);
+                    const showGlow = rarity !== 'common';
+
+                    return (
+                      <div
+                        key={event.id}
+                        className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold border-2 ${
+                          outcome === 'a'
+                            ? 'bg-outcome-a/20 text-outcome-a'
+                            : 'bg-outcome-b/20 text-outcome-b'
+                        }`}
+                        style={{
+                          borderColor: rarityConfig.hex,
+                          boxShadow: showGlow ? `0 0 10px ${rarityConfig.hex}, 0 0 20px ${rarityConfig.hex}50` : undefined,
+                        }}
+                      >
+                        {outcome === 'a' ? event.outcome_a_label : event.outcome_b_label}
+                      </div>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
@@ -455,7 +485,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
               </motion.p>
             </motion.div>
 
-            {/* Mini pick chips with probabilities */}
+            {/* Mini pick chips with probabilities and rarity */}
             <motion.div
               className="flex flex-wrap justify-center gap-2 mb-8"
               initial={{ opacity: 0, y: 20 }}
@@ -474,19 +504,24 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                   ? label.substring(0, 3).toUpperCase()
                   : label.toUpperCase();
 
+                const rarity = event.rarityInfo?.rarity ?? getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
+                const rarityConfig = getRarityConfig(rarity);
+                const showGlow = rarity !== 'common';
+
                 return (
                   <motion.div
                     key={event.id}
-                    className={`flex flex-col items-center px-3 py-2 rounded-lg text-xs font-bold ${
-                      outcome === 'a'
-                        ? 'bg-outcome-a/20 text-outcome-a border border-outcome-a/50'
-                        : 'bg-outcome-b/20 text-outcome-b border border-outcome-b/50'
-                    }`}
+                    className="flex flex-col items-center px-3 py-2 rounded-lg text-xs font-bold border-2"
+                    style={{
+                      borderColor: rarityConfig.hex,
+                      backgroundColor: showGlow ? `${rarityConfig.hex}15` : 'rgba(107, 114, 128, 0.15)',
+                      boxShadow: showGlow ? `0 0 10px ${rarityConfig.hex}, 0 0 20px ${rarityConfig.hex}50` : undefined,
+                    }}
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.8 + index * 0.1 }}
                   >
-                    <span className="text-sm">{shortLabel}</span>
+                    <span className="text-sm text-white">{shortLabel}</span>
                     <span className="text-[10px] opacity-70 mt-0.5">
                       {formatProbability(prob)}
                     </span>
