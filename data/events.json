@@ -29,6 +29,36 @@
       "status": "resolved",
       "winning_outcome": "b",
       "resolved_at": null
+    },
+    "6": {
+      "id": "6",
+      "status": "resolved",
+      "winning_outcome": "a",
+      "resolved_at": null
+    },
+    "7": {
+      "id": "7",
+      "status": "resolved",
+      "winning_outcome": "b",
+      "resolved_at": null
+    },
+    "8": {
+      "id": "8",
+      "status": "resolved",
+      "winning_outcome": "a",
+      "resolved_at": null
+    },
+    "9": {
+      "id": "9",
+      "status": "resolved",
+      "winning_outcome": "b",
+      "resolved_at": null
+    },
+    "10": {
+      "id": "10",
+      "status": "resolved",
+      "winning_outcome": "b",
+      "resolved_at": null
     }
   }
 }

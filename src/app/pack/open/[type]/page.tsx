@@ -12,91 +12,8 @@ import {
   calculateCombinedProbability,
   formatProbability,
 } from '@/lib/scoring/calculator';
+import { getEventsForPack } from '@/lib/pools';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
-
-// Mock events for v0 - will be replaced with Supabase/Polymarket data
-const MOCK_EVENTS: Event[] = [
-  {
-    id: '1',
-    polymarket_market_id: 'mock-1',
-    title: 'Manchester United vs Liverpool',
-    outcome_a_label: 'Man United',
-    outcome_b_label: 'Liverpool',
-    outcome_a_probability: 0.35,
-    outcome_b_probability: 0.65,
-    category: 'sports',
-    subcategory: 'epl',
-    status: 'active',
-    is_featured: false,
-    priority_score: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    polymarket_market_id: 'mock-2',
-    title: 'Lakers vs Celtics',
-    outcome_a_label: 'Lakers',
-    outcome_b_label: 'Celtics',
-    outcome_a_probability: 0.42,
-    outcome_b_probability: 0.58,
-    category: 'sports',
-    subcategory: 'nba',
-    status: 'active',
-    is_featured: false,
-    priority_score: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    polymarket_market_id: 'mock-3',
-    title: 'Chiefs vs 49ers',
-    outcome_a_label: 'Chiefs',
-    outcome_b_label: '49ers',
-    outcome_a_probability: 0.55,
-    outcome_b_probability: 0.45,
-    category: 'sports',
-    subcategory: 'nfl',
-    status: 'active',
-    is_featured: false,
-    priority_score: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    polymarket_market_id: 'mock-4',
-    title: 'Barcelona vs Real Madrid',
-    outcome_a_label: 'Barcelona',
-    outcome_b_label: 'Real Madrid',
-    outcome_a_probability: 0.48,
-    outcome_b_probability: 0.52,
-    category: 'sports',
-    subcategory: 'laliga',
-    status: 'active',
-    is_featured: false,
-    priority_score: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    polymarket_market_id: 'mock-5',
-    title: 'Verstappen wins next race?',
-    outcome_a_label: 'Yes',
-    outcome_b_label: 'No',
-    outcome_a_probability: 0.68,
-    outcome_b_probability: 0.32,
-    category: 'sports',
-    subcategory: 'f1',
-    status: 'active',
-    is_featured: false,
-    priority_score: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
 
 type Phase = 'opening' | 'revealing' | 'swiping' | 'confirming';
 
@@ -117,6 +34,13 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   const packIdRef = useRef<string>(uuidv4());
   const packId = packIdRef.current;
 
+  // Select events from pool once per session (stable across re-renders)
+  const eventsRef = useRef<Event[] | null>(null);
+  if (eventsRef.current === null) {
+    eventsRef.current = getEventsForPack(type, 5);
+  }
+  const events = eventsRef.current;
+
   const { setPack, setDraftPick } = useCurrentPackStore();
   const addPack = useMyPacksStore((state) => state.addPack);
 
@@ -135,9 +59,9 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
-      MOCK_EVENTS
+      events
     );
-  }, [type, setPack, packId]);
+  }, [type, setPack, packId, events]);
 
   // Auto-advance from opening to revealing
   useEffect(() => {
@@ -149,26 +73,26 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
   // Reveal cards one by one
   useEffect(() => {
-    if (phase === 'revealing' && revealedCards.length < MOCK_EVENTS.length) {
+    if (phase === 'revealing' && revealedCards.length < events.length) {
       const timer = setTimeout(() => {
         setRevealedCards((prev) => [...prev, prev.length]);
       }, 200);
       return () => clearTimeout(timer);
-    } else if (phase === 'revealing' && revealedCards.length >= MOCK_EVENTS.length) {
+    } else if (phase === 'revealing' && revealedCards.length >= events.length) {
       const timer = setTimeout(() => setPhase('swiping'), 600);
       return () => clearTimeout(timer);
     }
   }, [phase, revealedCards]);
 
   const handleSwipe = (outcome: Outcome) => {
-    const event = MOCK_EVENTS[currentIndex];
+    const event = events[currentIndex];
 
     // Save pick
     setDraftPick(event.id, outcome);
     setPickedEvents((prev) => [...prev, { event, outcome }]);
 
     // Move to next or finish
-    if (currentIndex < MOCK_EVENTS.length - 1) {
+    if (currentIndex < events.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       // All picked - go to confirming
@@ -178,7 +102,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
   // Save to myPacks when confirming starts
   useEffect(() => {
-    if (phase === 'confirming' && pickedEvents.length === MOCK_EVENTS.length) {
+    if (phase === 'confirming' && pickedEvents.length === events.length) {
       // Create UserPack object
       const now = new Date().toISOString();
       const userPack: UserPack = {
@@ -238,12 +162,12 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       );
 
       // Save to myPacks store
-      addPack(userPack, MOCK_EVENTS, userPicks);
+      addPack(userPack, events, userPicks);
     }
   }, [phase, packId, pickedEvents, type, addPack]);
 
   // Calculate jackpot potential
-  const jackpotData = pickedEvents.length === MOCK_EVENTS.length
+  const jackpotData = pickedEvents.length === events.length
     ? (() => {
         const picks = pickedEvents.map(({ event, outcome }) => ({
           probabilityAtPick:
@@ -262,7 +186,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   };
 
   // Get visible cards (current and next)
-  const visibleEvents = MOCK_EVENTS.slice(currentIndex, currentIndex + 2);
+  const visibleEvents = events.slice(currentIndex, currentIndex + 2);
 
   return (
     <main className="min-h-screen min-h-dvh bg-game-bg flex flex-col overflow-hidden">
@@ -308,7 +232,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             exit={{ opacity: 0 }}
           >
             <div className="flex gap-3 flex-wrap justify-center max-w-sm">
-              {MOCK_EVENTS.map((event, index) => (
+              {events.map((event, index) => (
                 <motion.div
                   key={event.id}
                   initial={{ scale: 0, rotate: -180, y: -50 }}
@@ -362,7 +286,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
             {/* Progress dots */}
             <div className="flex justify-center gap-2 mb-4">
-              {MOCK_EVENTS.map((_, index) => (
+              {events.map((_, index) => (
                 <motion.div
                   key={index}
                   className={`w-2 h-2 rounded-full ${
@@ -387,7 +311,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                       key={event.id}
                       event={event}
                       position={currentIndex + index + 1}
-                      total={MOCK_EVENTS.length}
+                      total={events.length}
                       onSwipe={handleSwipe}
                       isTop={index === 0}
                     />
