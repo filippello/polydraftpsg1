@@ -1,186 +1,81 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { QueueCard } from '@/components/game/QueueCard';
 import { RevealAnimation } from '@/components/animations/RevealAnimation';
-import type { UserPick, Event, Outcome } from '@/types';
-
-// Mock data for v0 - shows pack with picks waiting for resolution
-const MOCK_PICKS: (UserPick & { event: Event })[] = [
-  {
-    id: 'pick-1',
-    user_pack_id: 'mock-pack-1',
-    event_id: '1',
-    position: 1,
-    picked_outcome: 'b' as Outcome,
-    picked_at: new Date().toISOString(),
-    probability_snapshot: 0.65,
-    opposite_probability_snapshot: 0.35,
-    is_resolved: true,
-    is_correct: true,
-    resolved_at: new Date().toISOString(),
-    points_awarded: 15.38,
-    reveal_animation_played: false,
-    created_at: new Date().toISOString(),
-    event: {
-      id: '1',
-      polymarket_market_id: 'mock-1',
-      title: 'Manchester United vs Liverpool',
-      outcome_a_label: 'Man United',
-      outcome_b_label: 'Liverpool',
-      outcome_a_probability: 0.35,
-      outcome_b_probability: 0.65,
-      category: 'sports',
-      subcategory: 'epl',
-      status: 'resolved',
-      winning_outcome: 'b' as Outcome,
-      is_featured: false,
-      priority_score: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  },
-  {
-    id: 'pick-2',
-    user_pack_id: 'mock-pack-1',
-    event_id: '2',
-    position: 2,
-    picked_outcome: 'a' as Outcome,
-    picked_at: new Date().toISOString(),
-    probability_snapshot: 0.42,
-    opposite_probability_snapshot: 0.58,
-    is_resolved: false,
-    is_correct: undefined,
-    resolved_at: undefined,
-    points_awarded: 0,
-    reveal_animation_played: false,
-    created_at: new Date().toISOString(),
-    event: {
-      id: '2',
-      polymarket_market_id: 'mock-2',
-      title: 'Lakers vs Celtics',
-      outcome_a_label: 'Lakers',
-      outcome_b_label: 'Celtics',
-      outcome_a_probability: 0.42,
-      outcome_b_probability: 0.58,
-      category: 'sports',
-      subcategory: 'nba',
-      status: 'active',
-      is_featured: false,
-      priority_score: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  },
-  {
-    id: 'pick-3',
-    user_pack_id: 'mock-pack-1',
-    event_id: '3',
-    position: 3,
-    picked_outcome: 'a' as Outcome,
-    picked_at: new Date().toISOString(),
-    probability_snapshot: 0.55,
-    opposite_probability_snapshot: 0.45,
-    is_resolved: false,
-    is_correct: undefined,
-    resolved_at: undefined,
-    points_awarded: 0,
-    reveal_animation_played: false,
-    created_at: new Date().toISOString(),
-    event: {
-      id: '3',
-      polymarket_market_id: 'mock-3',
-      title: 'Chiefs vs 49ers',
-      outcome_a_label: 'Chiefs',
-      outcome_b_label: '49ers',
-      outcome_a_probability: 0.55,
-      outcome_b_probability: 0.45,
-      category: 'sports',
-      subcategory: 'nfl',
-      status: 'active',
-      is_featured: false,
-      priority_score: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  },
-  {
-    id: 'pick-4',
-    user_pack_id: 'mock-pack-1',
-    event_id: '4',
-    position: 4,
-    picked_outcome: 'b' as Outcome,
-    picked_at: new Date().toISOString(),
-    probability_snapshot: 0.52,
-    opposite_probability_snapshot: 0.48,
-    is_resolved: true,
-    is_correct: false,
-    resolved_at: new Date().toISOString(),
-    points_awarded: 0,
-    reveal_animation_played: false,
-    created_at: new Date().toISOString(),
-    event: {
-      id: '4',
-      polymarket_market_id: 'mock-4',
-      title: 'Barcelona vs Real Madrid',
-      outcome_a_label: 'Barcelona',
-      outcome_b_label: 'Real Madrid',
-      outcome_a_probability: 0.48,
-      outcome_b_probability: 0.52,
-      category: 'sports',
-      subcategory: 'laliga',
-      status: 'resolved',
-      winning_outcome: 'a' as Outcome,
-      is_featured: false,
-      priority_score: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  },
-  {
-    id: 'pick-5',
-    user_pack_id: 'mock-pack-1',
-    event_id: '5',
-    position: 5,
-    picked_outcome: 'a' as Outcome,
-    picked_at: new Date().toISOString(),
-    probability_snapshot: 0.68,
-    opposite_probability_snapshot: 0.32,
-    is_resolved: false,
-    is_correct: undefined,
-    resolved_at: undefined,
-    points_awarded: 0,
-    reveal_animation_played: false,
-    created_at: new Date().toISOString(),
-    event: {
-      id: '5',
-      polymarket_market_id: 'mock-5',
-      title: 'Verstappen wins next race?',
-      outcome_a_label: 'Yes',
-      outcome_b_label: 'No',
-      outcome_a_probability: 0.68,
-      outcome_b_probability: 0.32,
-      category: 'sports',
-      subcategory: 'f1',
-      status: 'active',
-      is_featured: false,
-      priority_score: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  },
-];
+import { useMyPacksStore, useStoredPack } from '@/stores';
+import type { UserPick, Event } from '@/types';
 
 export default function QueuePage({ params }: { params: { packId: string } }) {
-  // packId will be used when connecting to real backend
-  const { packId: _packId } = params;
-  void _packId; // Silence unused warning
-  const [picks, setPicks] = useState(MOCK_PICKS);
+  const { packId } = params;
+
+  // Load pack from myPacks store
+  const storedPack = useStoredPack(packId);
+  const updatePick = useMyPacksStore((state) => state.updatePick);
+
+  const [picks, setPicks] = useState<(UserPick & { event: Event })[]>([]);
   const [currentRevealIndex, setCurrentRevealIndex] = useState(0);
   const [isRevealing, setIsRevealing] = useState(false);
   const [revealingPick, setRevealingPick] = useState<(UserPick & { event: Event }) | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showBuyToast, setShowBuyToast] = useState(false);
+
+  // Handle "Open Another Pack" click - show buy notification
+  const handleOpenAnotherPack = () => {
+    setShowBuyToast(true);
+    // Auto-hide after 3 seconds
+    setTimeout(() => setShowBuyToast(false), 3000);
+    // TODO: Track this click for analytics
+    console.log('[Analytics] User clicked "Open Another Pack"');
+  };
+
+  // Initialize picks from stored pack
+  useEffect(() => {
+    if (storedPack) {
+      const sortedPicks = [...storedPack.picks].sort((a, b) => a.position - b.position);
+      setPicks(sortedPicks);
+
+      // Find the current reveal index (first non-revealed pick)
+      const firstUnrevealed = sortedPicks.findIndex((p) => !p.reveal_animation_played);
+      setCurrentRevealIndex(firstUnrevealed === -1 ? sortedPicks.length : firstUnrevealed);
+      setIsLoading(false);
+    } else {
+      setIsLoading(false);
+    }
+  }, [storedPack]);
+
+  // Show not found state
+  if (!isLoading && !storedPack) {
+    return (
+      <main className="min-h-screen bg-game-bg flex flex-col items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-6xl mb-4">📦</div>
+          <h1 className="text-xl font-bold mb-2">Pack Not Found</h1>
+          <p className="text-gray-400 mb-6">This pack doesn&apos;t exist or has been removed.</p>
+          <Link
+            href="/my-packs"
+            className="btn-pixel-gold inline-block"
+          >
+            View My Packs
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-game-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl animate-pulse">📦</div>
+          <p className="mt-4 text-gray-400">Loading pack...</p>
+        </div>
+      </main>
+    );
+  }
 
   // Calculate stats
   const resolvedCount = picks.filter((p) => p.reveal_animation_played).length;
@@ -201,12 +96,15 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
   const handleRevealComplete = () => {
     if (!revealingPick) return;
 
-    // Mark as revealed
+    // Mark as revealed locally
     setPicks((prev) =>
       prev.map((p) =>
         p.id === revealingPick.id ? { ...p, reveal_animation_played: true } : p
       )
     );
+
+    // Sync to myPacks store (persists to localStorage)
+    updatePick(packId, revealingPick.id, { reveal_animation_played: true });
 
     setCurrentRevealIndex((prev) => prev + 1);
     setIsRevealing(false);
@@ -218,8 +116,8 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-game-bg/95 backdrop-blur-sm border-b border-card-border p-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-gray-400 hover:text-white">
-            ← Back
+          <Link href="/my-packs" className="text-gray-400 hover:text-white">
+            ← My Packs
           </Link>
           <h1 className="font-bold">Your Queue</h1>
           <div className="w-12" /> {/* Spacer */}
@@ -312,8 +210,53 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
               isLocked={index > currentRevealIndex}
             />
           ))}
+
+          {/* Open Another Pack CTA */}
+          <motion.button
+            onClick={handleOpenAnotherPack}
+            className="w-full mt-6 py-4 px-6 bg-gradient-to-r from-game-accent/20 to-game-gold/20 border-2 border-dashed border-game-accent/50 rounded-xl hover:border-game-accent transition-colors group"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-2xl group-hover:animate-bounce">📦</span>
+              <div className="text-left">
+                <p className="font-bold text-game-accent">Open Another Pack</p>
+                <p className="text-xs text-gray-400">Keep the momentum going!</p>
+              </div>
+              <span className="text-xl">→</span>
+            </div>
+          </motion.button>
         </div>
       </div>
+
+      {/* Buy Pack Toast Notification */}
+      <AnimatePresence>
+        {showBuyToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-24 left-4 right-4 z-50"
+          >
+            <div className="bg-game-primary border-2 border-game-gold rounded-xl p-4 shadow-lg max-w-sm mx-auto">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🛒</span>
+                <div className="flex-1">
+                  <p className="font-bold text-game-gold">Buy More Packs!</p>
+                  <p className="text-sm text-gray-300">You need to purchase a pack to open another one.</p>
+                </div>
+                <button
+                  onClick={() => setShowBuyToast(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Reveal Animation Overlay */}
       <AnimatePresence>

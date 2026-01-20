@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
@@ -8,6 +9,15 @@ import { useSessionStore } from '@/stores';
 export default function ProfilePage() {
   const profile = useSessionStore((state) => state.profile);
   const anonymousId = useSessionStore((state) => state.anonymousId);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const handleResetData = () => {
+    // Clear all localStorage data
+    localStorage.removeItem('polydraft-session');
+    localStorage.removeItem('polydraft-my-packs');
+    // Reload the page to reinitialize
+    window.location.reload();
+  };
 
   // Mock stats for v0
   const stats = {
@@ -137,6 +147,44 @@ export default function ProfilePage() {
           <p className="text-xs text-center text-gray-500">
             Save your progress and compete on the leaderboard
           </p>
+        </motion.div>
+
+        {/* Dev: Reset Data */}
+        <motion.div
+          className="mt-8 pt-6 border-t border-card-border"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          <p className="text-xs text-gray-500 text-center mb-3">Developer Options</p>
+          {!showResetConfirm ? (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="w-full py-2 px-4 text-sm text-game-error border border-game-error/30 rounded-lg hover:bg-game-error/10 transition-colors"
+            >
+              Reset All Data
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-center text-game-error">
+                This will delete all your packs and progress!
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 py-2 px-4 text-sm border border-card-border rounded-lg hover:bg-card-border/20 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetData}
+                  className="flex-1 py-2 px-4 text-sm bg-game-error text-white rounded-lg hover:bg-game-error/80 transition-colors"
+                >
+                  Confirm Reset
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
 

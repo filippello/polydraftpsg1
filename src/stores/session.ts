@@ -35,9 +35,14 @@ export const useSessionStore = create<SessionState>()(
       isLoading: true,
       isInitialized: false,
 
-      // Initialize session (called on app mount)
+      // Initialize session (called on app mount or after hydration)
       initialize: () => {
         const state = get();
+
+        // Skip if already initialized (idempotent)
+        if (state.isInitialized) {
+          return;
+        }
 
         // Generate anonymous ID if not exists
         if (!state.anonymousId) {
@@ -91,6 +96,12 @@ export const useSessionStore = create<SessionState>()(
         anonymousId: state.anonymousId,
         userId: state.userId,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Called after hydration completes
+        if (state) {
+          state.initialize();
+        }
+      },
     }
   )
 );

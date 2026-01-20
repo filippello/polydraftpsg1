@@ -174,3 +174,38 @@ export function getTierColor(tier: ScoringResult['tier']): string {
       return '#6b7280'; // gray-500
   }
 }
+
+/**
+ * Calculate the maximum potential points if all picks are correct
+ * Useful for showing "jackpot" potential after drafting
+ */
+export function calculateMaxPotentialPoints(
+  picks: Array<{ probabilityAtPick: number }>
+): {
+  totalPoints: number;
+  breakdown: ScoringResult[];
+  packBonus: number;
+} {
+  const breakdown = picks.map((pick) =>
+    calculatePoints({ probabilityAtPick: pick.probabilityAtPick, isCorrect: true })
+  );
+  const totalPickPoints = breakdown.reduce((sum, result) => sum + result.points, 0);
+  const packBonus = calculatePackBonus(picks.length, picks.length); // Perfect score bonus
+
+  return {
+    totalPoints: Math.round((totalPickPoints + packBonus) * 100) / 100,
+    breakdown,
+    packBonus,
+  };
+}
+
+/**
+ * Calculate the combined probability (parlay odds) of all picks being correct
+ * This is the product of all individual probabilities
+ */
+export function calculateCombinedProbability(
+  picks: Array<{ probabilityAtPick: number }>
+): number {
+  if (picks.length === 0) return 0;
+  return picks.reduce((product, pick) => product * pick.probabilityAtPick, 1);
+}
