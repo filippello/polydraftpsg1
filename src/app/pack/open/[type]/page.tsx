@@ -508,7 +508,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 transition={{ delay: 0.5, type: 'spring', stiffness: 400, damping: 20 }}
               >
                 <span className="text-4xl font-bold text-white">
-                  ⭐ {jackpotData.maxPoints.totalPoints.toFixed(1)} pts ⭐
+                  ⭐ ${jackpotData.maxPoints.totalPoints.toFixed(2)} USD ⭐
                 </span>
               </motion.div>
 

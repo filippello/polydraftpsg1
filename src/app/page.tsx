@@ -47,7 +47,7 @@ export default function HomePage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wider">This Week</p>
-                <p className="text-2xl font-bold text-game-gold">{weeklyPoints} pts</p>
+                <p className="text-2xl font-bold text-game-gold">${weeklyPoints}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-400 uppercase tracking-wider">Rank</p>
@@ -157,7 +157,7 @@ export default function HomePage() {
               </motion.p>
 
               <p className="mt-2 text-xs text-gray-500">
-                5 events • Make your picks • Win points
+                5 events • Make your picks • Win USD
               </p>
             </div>
           )}

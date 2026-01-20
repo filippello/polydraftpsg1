@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { QueueCard } from '@/components/game/QueueCard';
 import { RevealAnimation } from '@/components/animations/RevealAnimation';
+import { PackSummary } from '@/components/game/PackSummary';
 import { useMyPacksStore, useStoredPack } from '@/stores';
+import { useEventSync } from '@/hooks/useEventSync';
 import type { UserPick, Event } from '@/types';
 
 export default function QueuePage({ params }: { params: { packId: string } }) {
   const { packId } = params;
+  const router = useRouter();
 
   // Load pack from myPacks store
   const storedPack = useStoredPack(packId);
@@ -21,9 +25,17 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
   const [revealingPick, setRevealingPick] = useState<(UserPick & { event: Event }) | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showBuyToast, setShowBuyToast] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryDismissed, setSummaryDismissed] = useState(false); // User explicitly dismissed summary
+  const [wasAlreadyComplete, setWasAlreadyComplete] = useState(false); // Pack was complete on mount
+
+  // Poll for event resolutions
+  useEventSync(packId);
 
   // Handle "Open Another Pack" click - show buy notification
   const handleOpenAnotherPack = () => {
+    setSummaryDismissed(true); // Prevent summary from re-opening
+    setShowSummary(false);
     setShowBuyToast(true);
     // Auto-hide after 3 seconds
     setTimeout(() => setShowBuyToast(false), 3000);
@@ -31,20 +43,74 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
     console.log('[Analytics] User clicked "Open Another Pack"');
   };
 
-  // Initialize picks from stored pack
+  // Handle "View My Packs" click from summary
+  const handleViewMyPacks = () => {
+    setShowSummary(false);
+    router.push('/my-packs');
+  };
+
+  // Initialize and sync picks from stored pack
   useEffect(() => {
     if (storedPack) {
       const sortedPicks = [...storedPack.picks].sort((a, b) => a.position - b.position);
       setPicks(sortedPicks);
 
-      // Find the current reveal index (first non-revealed pick)
-      const firstUnrevealed = sortedPicks.findIndex((p) => !p.reveal_animation_played);
-      setCurrentRevealIndex(firstUnrevealed === -1 ? sortedPicks.length : firstUnrevealed);
+      // Only update reveal index if not currently revealing
+      if (!isRevealing) {
+        const firstUnrevealed = sortedPicks.findIndex((p) => !p.reveal_animation_played);
+        const newIndex = firstUnrevealed === -1 ? sortedPicks.length : firstUnrevealed;
+        setCurrentRevealIndex(newIndex);
+
+        // Check if pack was already complete on mount (all picks revealed)
+        if (isLoading && newIndex >= sortedPicks.length) {
+          setWasAlreadyComplete(true);
+          setShowSummary(true); // Show summary immediately
+        }
+      }
       setIsLoading(false);
     } else {
       setIsLoading(false);
     }
-  }, [storedPack]);
+  }, [storedPack, isRevealing, isLoading]);
+
+  // Show summary when pack is complete (all picks revealed)
+  // Don't show if: already showing, user dismissed it, or pack was already complete on mount (handled above)
+  useEffect(() => {
+    if (
+      picks.length > 0 &&
+      currentRevealIndex >= picks.length &&
+      !isRevealing &&
+      !showSummary &&
+      !summaryDismissed &&
+      !wasAlreadyComplete // Already handled in init effect
+    ) {
+      // Small delay to let the last reveal finish
+      const timer = setTimeout(() => setShowSummary(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentRevealIndex, picks.length, isRevealing, showSummary, summaryDismissed, wasAlreadyComplete]);
+
+  // Memoized callback for reveal complete (must be before early returns)
+  const handleRevealComplete = useCallback(() => {
+    setRevealingPick((currentRevealingPick) => {
+      if (!currentRevealingPick) return null;
+
+      // Mark as revealed locally
+      setPicks((prev) =>
+        prev.map((p) =>
+          p.id === currentRevealingPick.id ? { ...p, reveal_animation_played: true } : p
+        )
+      );
+
+      // Sync to myPacks store (persists to localStorage)
+      updatePick(packId, currentRevealingPick.id, { reveal_animation_played: true });
+
+      setCurrentRevealIndex((prev) => prev + 1);
+      setIsRevealing(false);
+
+      return null;
+    });
+  }, [packId, updatePick]);
 
   // Show not found state
   if (!isLoading && !storedPack) {
@@ -80,7 +146,7 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
   // Calculate stats
   const resolvedCount = picks.filter((p) => p.reveal_animation_played).length;
   const totalPoints = picks.reduce((sum, p) => sum + p.points_awarded, 0);
-  const correctCount = picks.filter((p) => p.is_correct).length;
+  const correctCount = picks.filter((p) => p.is_correct && p.reveal_animation_played).length;
 
   // Check if next card can be revealed
   const nextPick = picks[currentRevealIndex];
@@ -91,24 +157,6 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
 
     setIsRevealing(true);
     setRevealingPick(nextPick);
-  };
-
-  const handleRevealComplete = () => {
-    if (!revealingPick) return;
-
-    // Mark as revealed locally
-    setPicks((prev) =>
-      prev.map((p) =>
-        p.id === revealingPick.id ? { ...p, reveal_animation_played: true } : p
-      )
-    );
-
-    // Sync to myPacks store (persists to localStorage)
-    updatePick(packId, revealingPick.id, { reveal_animation_played: true });
-
-    setCurrentRevealIndex((prev) => prev + 1);
-    setIsRevealing(false);
-    setRevealingPick(null);
   };
 
   return (
@@ -134,9 +182,9 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-400">Points</p>
+            <p className="text-xs text-gray-400">USD</p>
             <p className="text-lg font-bold text-game-gold">
-              {totalPoints.toFixed(1)}
+              ${totalPoints.toFixed(2)}
             </p>
           </div>
         </div>
@@ -152,36 +200,8 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
         </div>
       </div>
 
-      {/* Reveal Button (if available) */}
-      {canReveal && !isRevealing && (
-        <div className="p-4">
-          <motion.button
-            className="w-full btn-pixel-gold"
-            onClick={handleReveal}
-            initial={{ scale: 0.95 }}
-            animate={{ scale: [0.95, 1.02, 0.95] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            Reveal Card #{currentRevealIndex + 1}
-          </motion.button>
-        </div>
-      )}
-
-      {/* Waiting message */}
-      {!canReveal && !isRevealing && currentRevealIndex < picks.length && (
-        <div className="p-4 text-center">
-          <motion.p
-            className="text-sm text-gray-400"
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            Waiting for event #{currentRevealIndex + 1} to resolve...
-          </motion.p>
-        </div>
-      )}
-
-      {/* Pack complete */}
-      {currentRevealIndex >= picks.length && (
+      {/* Pack complete indicator (shows when summary is dismissed) */}
+      {currentRevealIndex >= picks.length && !showSummary && (
         <div className="p-4 text-center">
           <motion.div
             initial={{ scale: 0 }}
@@ -192,8 +212,14 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
           </motion.div>
           <p className="text-lg font-bold">Pack Complete!</p>
           <p className="text-sm text-gray-400">
-            {correctCount}/{picks.length} correct • {totalPoints.toFixed(1)} points
+            {correctCount}/{picks.length} correct • ${totalPoints.toFixed(2)} USD
           </p>
+          <button
+            onClick={() => setShowSummary(true)}
+            className="mt-3 text-game-gold text-sm underline"
+          >
+            View Summary
+          </button>
         </div>
       )}
 
@@ -208,6 +234,7 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
               isRevealed={pick.reveal_animation_played}
               isNext={index === currentRevealIndex}
               isLocked={index > currentRevealIndex}
+              onReveal={index === currentRevealIndex ? handleReveal : undefined}
             />
           ))}
 
@@ -264,6 +291,20 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
           <RevealAnimation
             pick={revealingPick}
             onComplete={handleRevealComplete}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Pack Summary Overlay */}
+      <AnimatePresence>
+        {showSummary && (
+          <PackSummary
+            correctCount={correctCount}
+            totalPicks={picks.length}
+            totalUSD={totalPoints}
+            onClose={handleViewMyPacks}
+            onOpenAnother={handleOpenAnotherPack}
+            skipAnimations={wasAlreadyComplete}
           />
         )}
       </AnimatePresence>

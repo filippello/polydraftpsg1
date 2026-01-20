@@ -39,6 +39,13 @@ export interface PackSummary {
 // Store Interface
 // ============================================
 
+interface ResolvePickData {
+  winningOutcome: 'a' | 'b';
+  resolvedAt: string;
+  isCorrect: boolean;
+  pointsAwarded: number;
+}
+
 interface MyPacksState {
   // State
   packs: Record<string, StoredPack>;
@@ -49,6 +56,7 @@ interface MyPacksState {
   updatePack: (packId: string, updates: Partial<UserPack>) => void;
   updatePick: (packId: string, pickId: string, updates: Partial<UserPick>) => void;
   removePack: (packId: string) => void;
+  resolvePicksForEvent: (packId: string, eventId: string, data: ResolvePickData) => void;
 
   // Selectors
   getPackById: (packId: string) => StoredPack | null;
@@ -205,6 +213,59 @@ export const useMyPacksStore = create<MyPacksState>()(
         set({
           packs: newPacks,
           packOrder: packOrder.filter((id) => id !== packId),
+        });
+      },
+
+      // Resolve picks for a specific event
+      resolvePicksForEvent: (packId, eventId, data) => {
+        const { packs } = get();
+        const storedPack = packs[packId];
+
+        if (!storedPack) return;
+
+        // Find and update picks that match this event and are not yet resolved
+        const newPicks = storedPack.picks.map((pick) => {
+          if (pick.event_id === eventId && !pick.is_resolved) {
+            return {
+              ...pick,
+              is_resolved: true,
+              is_correct: data.isCorrect,
+              resolved_at: data.resolvedAt,
+              points_awarded: data.pointsAwarded,
+              // Also update the event's winning outcome
+              event: {
+                ...pick.event,
+                status: 'resolved' as const,
+                winning_outcome: data.winningOutcome,
+                resolved_at: data.resolvedAt,
+              },
+            };
+          }
+          return pick;
+        });
+
+        // Compute new pack totals
+        const totalPoints = newPicks.reduce(
+          (sum, p) => sum + (p.points_awarded || 0),
+          0
+        );
+        const correctPicks = newPicks.filter((p) => p.is_correct).length;
+        const allResolved = newPicks.every((p) => p.is_resolved);
+
+        set({
+          packs: {
+            ...packs,
+            [packId]: {
+              ...storedPack,
+              picks: newPicks,
+              pack: {
+                ...storedPack.pack,
+                total_points: totalPoints,
+                correct_picks: correctPicks,
+                resolution_status: allResolved ? 'fully_resolved' : 'partially_resolved',
+              },
+            },
+          },
         });
       },
 

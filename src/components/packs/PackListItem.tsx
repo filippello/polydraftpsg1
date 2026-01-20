@@ -60,7 +60,7 @@ export function PackListItem({ pack, index }: PackListItemProps) {
                   {pack.packTypeSlug} Pack
                 </h3>
                 <span className="text-game-gold font-bold text-sm">
-                  {pack.totalPoints.toFixed(1)} pts
+                  ${pack.totalPoints.toFixed(2)}
                 </span>
               </div>
 
