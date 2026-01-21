@@ -8,7 +8,8 @@ import { formatProbability, getTier, getTierColor } from '@/lib/scoring/calculat
 import {
   getEventRarity,
   getRarityConfig,
-  getRarityBorderClass,
+  getRarityBorderColor,
+  getHardShadowClass,
 } from '@/lib/rarity';
 
 interface SwipeCardProps {
@@ -42,7 +43,8 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
   // Get rarity info (from rarityInfo if available, or calculate it)
   const rarity = event.rarityInfo?.rarity ?? getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
   const rarityConfig = getRarityConfig(rarity);
-  const rarityBorderClass = getRarityBorderClass(rarity);
+  const rarityBorderColor = getRarityBorderColor(rarity);
+  const hardShadowClass = getHardShadowClass(rarity);
   // Only show glow for rare and above
   const showGlow = rarity === 'rare' || rarity === 'epic' || rarity === 'legendary';
 
@@ -97,7 +99,18 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
       }
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <div className={`w-full h-full bg-card-bg border-4 ${rarityBorderClass} rounded-2xl overflow-hidden shadow-pixel-lg relative ${showGlow ? rarityConfig.glowClass : ''}`}>
+      <div className={`w-full h-full bg-card-bg border-balatro-thick ${rarityBorderColor} rounded-balatro-card overflow-hidden ${hardShadowClass} relative ${showGlow ? rarityConfig.glowClass : ''}`}>
+        {/* Inner border - signature Balatro */}
+        <div className="balatro-card-inner" />
+
+        {/* Foil/Holo overlay for rare+ */}
+        {(rarity === 'rare' || rarity === 'epic') && (
+          <div className="absolute inset-0 pointer-events-none z-10 balatro-foil" />
+        )}
+        {rarity === 'legendary' && (
+          <div className="absolute inset-0 pointer-events-none z-10 balatro-holo" />
+        )}
+
         {/* Left overlay (Option B) */}
         <motion.div
           className="absolute inset-0 bg-outcome-b/30 pointer-events-none z-20 flex items-center justify-center"
@@ -133,20 +146,20 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
         {/* Card content */}
         <div className="h-full flex flex-col">
           {/* Floating Header over image */}
-          <div className="absolute top-0 left-0 right-0 z-10 p-4 flex items-center justify-between">
+          <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full uppercase font-bold text-white">
+              <span className="text-[10px] px-3 py-2 bg-black/70 backdrop-blur-sm rounded-lg uppercase font-bold text-white shadow-hard-sm font-pixel-heading">
                 {event.subcategory || event.category}
               </span>
               {/* Rarity badge */}
               <span
-                className="text-xs px-3 py-1 rounded-full uppercase font-bold text-white"
+                className="text-[10px] px-3 py-2 rounded-lg uppercase font-bold text-white shadow-hard-sm font-pixel-heading"
                 style={{ backgroundColor: rarityConfig.hex }}
               >
                 {rarityConfig.name}
               </span>
             </div>
-            <span className="text-sm text-white bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
+            <span className="text-base text-white bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-hard-sm font-bold font-pixel-body">
               {position}/{total}
             </span>
           </div>
@@ -183,8 +196,8 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
           {/* Information panel */}
           <div className="flex-1 flex flex-col p-4 bg-card-bg/95">
             {/* Title */}
-            <h2 className="text-xl font-bold mb-4 leading-tight text-center">
-              {event.title}
+            <h2 className="text-xl font-bold mb-4 leading-tight text-center font-pixel-body">
+              {isVsMatch ? `${event.outcome_b_label} vs ${event.outcome_a_label}` : event.title}
             </h2>
 
             {/* VS display */}
@@ -192,28 +205,34 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
               {isVsMatch ? (
                 <div className="w-full">
                   <div className="flex items-center justify-center gap-4">
+                    {/* Team B - Left (swipe left = B) */}
                     <div className="flex-1 text-right">
-                      <p className="font-bold text-lg" style={{ color: colorA }}>
-                        {event.outcome_a_label}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        {formatProbability(event.outcome_a_probability)}
-                      </p>
-                    </div>
-                    <div className="text-2xl font-bold text-gray-600">VS</div>
-                    <div className="flex-1 text-left">
-                      <p className="font-bold text-lg" style={{ color: colorB }}>
+                      <p className="font-bold text-xl font-pixel-body text-outcome-b">
                         {event.outcome_b_label}
                       </p>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-2xl font-pixel-body text-white mt-1">
                         {formatProbability(event.outcome_b_probability)}
                       </p>
                     </div>
+
+                    {/* VS */}
+                    <div className="text-3xl font-bold text-gray-500 font-pixel-heading">VS</div>
+
+                    {/* Team A - Right (swipe right = A) */}
+                    <div className="flex-1 text-left">
+                      <p className="font-bold text-xl font-pixel-body text-outcome-a">
+                        {event.outcome_a_label}
+                      </p>
+                      <p className="text-2xl font-pixel-body text-white mt-1">
+                        {formatProbability(event.outcome_a_probability)}
+                      </p>
+                    </div>
                   </div>
+
                   {/* Draw option */}
                   {event.supports_draw && event.outcome_draw_probability && (
-                    <div className="text-center mt-2">
-                      <span className="text-gray-400 text-sm">
+                    <div className="text-center mt-3">
+                      <span className="text-game-gold text-base font-pixel-body">
                         {event.outcome_draw_label || 'Draw'}: {formatProbability(event.outcome_draw_probability)}
                       </span>
                     </div>
@@ -221,16 +240,19 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
                 </div>
               ) : (
                 <div className="flex items-center gap-8">
+                  {/* NO - Left (swipe left = B) */}
                   <div className="text-center">
-                    <p className="font-bold text-xl text-green-500">YES</p>
-                    <p className="text-sm text-gray-400">
-                      {formatProbability(event.outcome_a_probability)}
+                    <p className="font-bold text-2xl text-red-500 font-pixel-heading">NO</p>
+                    <p className="text-2xl text-white mt-1 font-pixel-body">
+                      {formatProbability(event.outcome_b_probability)}
                     </p>
                   </div>
+
+                  {/* YES - Right (swipe right = A) */}
                   <div className="text-center">
-                    <p className="font-bold text-xl text-red-500">NO</p>
-                    <p className="text-sm text-gray-400">
-                      {formatProbability(event.outcome_b_probability)}
+                    <p className="font-bold text-2xl text-green-500 font-pixel-heading">YES</p>
+                    <p className="text-2xl text-white mt-1 font-pixel-body">
+                      {formatProbability(event.outcome_a_probability)}
                     </p>
                   </div>
                 </div>

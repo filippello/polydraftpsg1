@@ -168,7 +168,7 @@ export function getFallbackRarities(targetRarity: Rarity): Rarity[] {
 }
 
 /**
- * Get border color class for a rarity
+ * Get border color class for a rarity (legacy)
  */
 export function getRarityBorderClass(rarity: Rarity): string {
   switch (rarity) {
@@ -184,6 +184,36 @@ export function getRarityBorderClass(rarity: Rarity): string {
     default:
       return 'border-gray-500';
   }
+}
+
+/**
+ * Get Balatro-style border color class for a rarity
+ * Uses brighter/more saturated colors for the Balatro look
+ */
+export function getRarityBorderColor(rarity: Rarity): string {
+  const colors: Record<Rarity, string> = {
+    common: 'border-gray-500',
+    uncommon: 'border-green-500',
+    rare: 'border-blue-400',
+    epic: 'border-purple-400',
+    legendary: 'border-orange-400',
+  };
+  return colors[rarity];
+}
+
+/**
+ * Get Balatro-style hard shadow class for a rarity
+ * Higher rarities get larger shadows
+ */
+export function getHardShadowClass(rarity: Rarity): string {
+  const shadows: Record<Rarity, string> = {
+    common: 'shadow-hard',
+    uncommon: 'shadow-hard',
+    rare: 'shadow-hard-lg',
+    epic: 'shadow-hard-lg',
+    legendary: 'shadow-hard-lg',
+  };
+  return shadows[rarity];
 }
 
 /**

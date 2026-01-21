@@ -45,6 +45,13 @@ const config: Config = {
         "pixel-xl": ["20px", { lineHeight: "24px" }],
         "pixel-2xl": ["24px", { lineHeight: "28px" }],
         "pixel-3xl": ["32px", { lineHeight: "36px" }],
+        // Balatro font sizes (multiples of 8)
+        "balatro-xs": ["8px", { lineHeight: "12px" }],
+        "balatro-sm": ["12px", { lineHeight: "16px" }],
+        "balatro-base": ["16px", { lineHeight: "24px" }],
+        "balatro-lg": ["24px", { lineHeight: "32px" }],
+        "balatro-xl": ["32px", { lineHeight: "40px" }],
+        "balatro-2xl": ["48px", { lineHeight: "56px" }],
       },
       // Pixel-perfect spacing (multiples of 4)
       spacing: {
@@ -64,6 +71,14 @@ const config: Config = {
         "pixel-sm": "2px",
         "pixel-md": "4px",
         "pixel-lg": "8px",
+        // Balatro border radius
+        "balatro": "8px",
+        "balatro-card": "16px",
+      },
+      // Balatro border widths
+      borderWidth: {
+        "balatro": "3px",
+        "balatro-thick": "4px",
       },
       // Custom animations
       animation: {
@@ -76,6 +91,10 @@ const config: Config = {
         "slide-up": "slide-up 0.3s ease-out",
         "confetti": "confetti 1s ease-out forwards",
         "bounce-in": "bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+        // Balatro animations
+        "bounce-pop": "bounce-pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+        "foil-shimmer": "foil-shimmer 3s linear infinite",
+        "screen-shake": "screen-shake 0.4s ease-in-out",
       },
       keyframes: {
         shake: {
@@ -118,6 +137,23 @@ const config: Config = {
           "50%": { transform: "scale(1.2)" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        // Balatro keyframes
+        "bounce-pop": {
+          "0%": { transform: "scale(0.3)", opacity: "0" },
+          "50%": { transform: "scale(1.1)" },
+          "70%": { transform: "scale(0.95)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "foil-shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "screen-shake": {
+          "0%, 100%": { transform: "translate(0)" },
+          "25%": { transform: "translate(-4px, 2px)" },
+          "50%": { transform: "translate(4px, -2px)" },
+          "75%": { transform: "translate(-2px, 0)" },
+        },
       },
       // Box shadows for pixel depth
       boxShadow: {
@@ -127,11 +163,18 @@ const config: Config = {
         glow: "0 0 20px rgba(255, 215, 0, 0.5)",
         "glow-success": "0 0 20px rgba(74, 222, 128, 0.5)",
         "glow-failure": "0 0 20px rgba(239, 68, 68, 0.5)",
+        // Balatro hard shadows (no blur)
+        "hard-sm": "2px 2px 0 0 rgba(0, 0, 0, 0.8)",
+        "hard": "4px 4px 0 0 rgba(0, 0, 0, 0.8)",
+        "hard-lg": "6px 6px 0 0 rgba(0, 0, 0, 0.8)",
       },
       // Font family for pixel look
       fontFamily: {
         pixel: ["var(--font-pixel)", "monospace"],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        // Balatro fonts
+        "pixel-heading": ["var(--font-pixel-heading)", "monospace"],
+        "pixel-body": ["var(--font-pixel-body)", "monospace"],
       },
     },
   },

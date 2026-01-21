@@ -1,11 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Press_Start_2P, VT323 } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+});
+
+const pressStart2P = Press_Start_2P({
+  weight: '400',
+  subsets: ["latin"],
+  variable: "--font-pixel-heading",
+});
+
+const vt323 = VT323({
+  weight: '400',
+  subsets: ["latin"],
+  variable: "--font-pixel-body",
 });
 
 export const metadata: Metadata = {
@@ -34,9 +46,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${jetbrainsMono.variable} font-mono antialiased bg-game-bg text-foreground`}>
+      <body className={`${jetbrainsMono.variable} ${pressStart2P.variable} ${vt323.variable} font-mono antialiased bg-game-bg text-foreground`}>
         <Providers>
-          <div className="min-h-screen min-h-dvh flex flex-col">
+          {/* Balatro post-processing effects wrapper */}
+          <div className="min-h-screen min-h-dvh flex flex-col balatro-noise balatro-vignette balatro-scanlines">
             {children}
           </div>
         </Providers>

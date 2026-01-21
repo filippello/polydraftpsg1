@@ -223,7 +223,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
               <PackSprite type={type as 'sports'} size="lg" glowing />
             </motion.div>
             <motion.p
-              className="mt-6 text-xl font-bold"
+              className="mt-6 text-xl font-bold font-pixel-heading tracking-wider"
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 0.5, repeat: Infinity }}
             >
@@ -306,8 +306,8 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
           >
             {/* Header */}
             <div className="p-4 text-center">
-              <h1 className="text-lg font-bold">Make Your Picks</h1>
-              <p className="text-sm text-gray-400">Swipe to choose</p>
+              <h1 className="text-xl font-bold font-pixel-heading text-shadow-balatro tracking-wider">Make Your Picks</h1>
+              <p className="text-sm text-gray-400 mt-1">Swipe to choose</p>
             </div>
 
             {/* Progress dots */}
@@ -445,7 +445,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
             {/* Header */}
             <motion.h2
-              className="text-2xl font-bold mb-6"
+              className="text-xl font-bold mb-6 font-pixel-heading text-shadow-balatro tracking-wider"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
@@ -467,7 +467,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
               />
 
-              <p className="text-center text-sm font-semibold text-game-gold mb-3 tracking-wide">
+              <p className="text-center text-sm font-bold text-game-gold mb-3 tracking-widest uppercase">
                 POTENTIAL JACKPOT
               </p>
 
@@ -478,7 +478,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 transition={{ delay: 0.5, type: 'spring', stiffness: 400, damping: 20 }}
               >
                 <span className="text-4xl font-bold text-white">
-                  ⭐ ${jackpotData.maxPoints.totalPoints.toFixed(2)} USD ⭐
+                  ${jackpotData.maxPoints.totalPoints.toFixed(2)} USD
                 </span>
               </motion.div>
 
@@ -552,15 +552,15 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
             {/* CTA Button */}
             <motion.button
-              className="px-8 py-4 bg-gradient-to-r from-game-gold to-amber-500 text-black font-bold text-lg rounded-xl shadow-lg shadow-game-gold/30"
+              className="px-8 py-4 bg-gradient-to-r from-game-gold to-amber-500 text-black font-bold text-base rounded-xl shadow-hard-lg font-pixel-heading tracking-wider"
               onClick={handleLetsGo}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.2 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95, y: 2 }}
             >
-              LET&apos;S GO! 🚀
+              LET&apos;S GO!
             </motion.button>
           </motion.div>
         )}
