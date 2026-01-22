@@ -22,6 +22,7 @@ export default function HomePage() {
   const anonymousId = useSessionStore((state) => state.anonymousId);
   const isProfileSynced = useSessionStore((state) => state.isProfileSynced);
   const [isHovering, setIsHovering] = useState(false);
+  const [hoveredPack, setHoveredPack] = useState<'left' | 'right' | null>(null);
   const [showBuyToast, setShowBuyToast] = useState(false);
   const [weeklyStatus, setWeeklyStatus] = useState<WeeklyPackStatus | null>(null);
 
@@ -120,33 +121,37 @@ export default function HomePage() {
 
                 {/* Card hand layout */}
                 <div className="relative flex justify-center items-end h-48 mb-4">
+                  {/* Left card (main/front card) */}
+                  <Link href="/pack/open/sports" className="absolute z-[2]">
+                    <motion.div
+                      className="cursor-pointer origin-bottom"
+                      style={{ rotate: packsRemaining >= 2 ? -8 : 0, x: packsRemaining >= 2 ? -50 : 0 }}
+                      whileHover={{ y: -20, rotate: packsRemaining >= 2 ? -5 : 0, scale: 1.05, zIndex: 10 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      onHoverStart={() => setHoveredPack('left')}
+                      onHoverEnd={() => setHoveredPack(null)}
+                    >
+                      <PackSprite type="sports" size="lg" glowing={hoveredPack === 'left' || hoveredPack === null} />
+                    </motion.div>
+                  </Link>
+
                   {packsRemaining >= 2 && (
-                    // Left card (slightly rotated left)
-                    <Link href="/pack/open/sports" className="absolute">
+                    // Right card (back card)
+                    <Link href="/pack/open/sports" className="absolute z-[1]">
                       <motion.div
                         className="cursor-pointer origin-bottom"
-                        style={{ rotate: -8, x: -50 }}
-                        whileHover={{ y: -20, rotate: -5, scale: 1.05, zIndex: 10 }}
+                        style={{ rotate: 8, x: 50 }}
+                        whileHover={{ y: -20, rotate: 5, scale: 1.05, zIndex: 10 }}
                         whileTap={{ scale: 0.95 }}
                         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        onHoverStart={() => setHoveredPack('right')}
+                        onHoverEnd={() => setHoveredPack(null)}
                       >
-                        <PackSprite type="sports" size="lg" />
+                        <PackSprite type="sports" size="lg" glowing={hoveredPack === 'right'} />
                       </motion.div>
                     </Link>
                   )}
-
-                  {/* Right card (main/front card, slightly rotated right) */}
-                  <Link href="/pack/open/sports" className="absolute">
-                    <motion.div
-                      className="cursor-pointer origin-bottom"
-                      style={{ rotate: packsRemaining >= 2 ? 8 : 0, x: packsRemaining >= 2 ? 50 : 0 }}
-                      whileHover={{ y: -20, rotate: packsRemaining >= 2 ? 5 : 0, scale: 1.05, zIndex: 10 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    >
-                      <PackSprite type="sports" size="lg" glowing />
-                    </motion.div>
-                  </Link>
                 </div>
 
                 <motion.p
