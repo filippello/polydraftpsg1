@@ -40,7 +40,7 @@ export interface PackSummary {
 // ============================================
 
 interface ResolvePickData {
-  winningOutcome: 'a' | 'b';
+  winningOutcome: 'a' | 'b' | 'draw';
   resolvedAt: string;
   isCorrect: boolean;
   pointsAwarded: number;

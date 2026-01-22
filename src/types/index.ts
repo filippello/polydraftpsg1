@@ -25,6 +25,8 @@ export interface Event {
   polymarket_market_id: string;
   polymarket_condition_id?: string;
   polymarket_slug?: string;
+  polymarket_id?: string;  // ID interno de Polymarket
+  volume?: number;         // Trading volume
 
   title: string;
   description?: string;
@@ -129,6 +131,7 @@ export interface UserPick {
 
   probability_snapshot: number;
   opposite_probability_snapshot: number;
+  draw_probability_snapshot?: number; // For events that support draw
 
   is_resolved: boolean;
   is_correct?: boolean;
@@ -238,4 +241,65 @@ export interface AnonymousSession {
   created_at: string;
   last_active_at: string;
   data?: Record<string, unknown>;
+}
+
+// ============================================
+// Polymarket Token
+// ============================================
+
+export interface PolymarketToken {
+  id: string;
+  event_id: string;
+  outcome: Outcome;
+  outcome_label?: string;  // Original label from Polymarket (e.g., "Arsenal", "Man United")
+  token_id: string;
+  last_price?: number;
+  last_updated_at?: string;
+  created_at: string;
+}
+
+// ============================================
+// Price Sync Types
+// ============================================
+
+export interface PriceSyncResult {
+  event_id: string;
+  outcome_a_probability: number;
+  outcome_b_probability: number;
+  outcome_draw_probability?: number;
+  synced_at: string;
+}
+
+export interface SyncLogEntry {
+  id: string;
+  sync_type: string;
+  started_at: string;
+  completed_at?: string;
+  events_synced: number;
+  errors: unknown[];
+  status: 'running' | 'completed' | 'failed';
+}
+
+// ============================================
+// Polymarket Event Input (from API)
+// ============================================
+
+export interface PolymarketEventInput {
+  id: string;                    // polymarket_id interno
+  polymarket_market_id: string;
+  polymarket_slug: string;       // Identificador principal
+  title: string;
+  sport: string;                 // Se mapea a category/subcategory
+  outcome_a_label: string;
+  outcome_b_label: string;
+  outcome_a_probability: number;
+  outcome_b_probability: number;
+  outcome_draw_label?: string | null;
+  outcome_draw_probability?: number | null;
+  supports_draw: boolean;
+  clob_token_ids: Array<{ outcome: string; token_id: string }>;
+  volume: number;
+  start_time: string;            // → event_start_at
+  end_date: string;              // → resolution_deadline_at
+  status: string;
 }

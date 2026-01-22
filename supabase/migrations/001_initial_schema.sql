@@ -2,15 +2,14 @@
 -- Polydraft Database Schema v1
 -- ============================================
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Note: gen_random_uuid() is built into PostgreSQL 13+ and works natively in Supabase
 
 -- ============================================
 -- 1. Events Table (from Polymarket)
 -- ============================================
 
 CREATE TABLE events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Polymarket mapping
   polymarket_market_id TEXT UNIQUE NOT NULL,
@@ -69,7 +68,7 @@ CREATE INDEX idx_events_priority ON events(priority_score DESC);
 -- ============================================
 
 CREATE TABLE pack_types (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   slug TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
@@ -105,7 +104,7 @@ INSERT INTO pack_types (slug, name, description, eligibility_filters, pixel_art_
 -- ============================================
 
 CREATE TABLE anonymous_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   anonymous_id TEXT UNIQUE NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
 
@@ -124,7 +123,7 @@ CREATE INDEX idx_anonymous_sessions_user_id ON anonymous_sessions(user_id);
 -- ============================================
 
 CREATE TABLE user_profiles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Can be linked to auth user OR anonymous session
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -178,7 +177,7 @@ CREATE INDEX idx_user_profiles_username ON user_profiles(username);
 -- ============================================
 
 CREATE TABLE user_packs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Owner (can be user_id or anonymous_id)
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -223,7 +222,7 @@ CREATE INDEX idx_user_packs_opened_at ON user_packs(opened_at DESC);
 -- ============================================
 
 CREATE TABLE user_picks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_pack_id UUID REFERENCES user_packs(id) ON DELETE CASCADE NOT NULL,
   event_id UUID REFERENCES events(id) NOT NULL,
 
@@ -264,7 +263,7 @@ CREATE INDEX idx_user_picks_is_resolved ON user_picks(is_resolved);
 -- ============================================
 
 CREATE TABLE leaderboards (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Time period (week)
   week_start DATE NOT NULL,
@@ -284,7 +283,7 @@ CREATE TABLE leaderboards (
 );
 
 CREATE TABLE leaderboard_entries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   leaderboard_id UUID REFERENCES leaderboards(id) ON DELETE CASCADE NOT NULL,
   profile_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE NOT NULL,
 
@@ -313,7 +312,7 @@ CREATE INDEX idx_leaderboard_entries_total_points ON leaderboard_entries(total_p
 -- ============================================
 
 CREATE TABLE polymarket_sync_log (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sync_type TEXT NOT NULL,
   started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ,
@@ -323,7 +322,7 @@ CREATE TABLE polymarket_sync_log (
 );
 
 CREATE TABLE resolution_queue (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id UUID REFERENCES events(id) ON DELETE CASCADE UNIQUE NOT NULL,
   priority INTEGER DEFAULT 0,
   last_check_at TIMESTAMPTZ,

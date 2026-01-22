@@ -43,7 +43,7 @@ export interface ClobPrice {
 
 export interface ResolutionResult {
   resolved: boolean;
-  winningOutcome?: 'a' | 'b';
+  winningOutcome?: 'a' | 'b' | 'draw';
   winningPrice?: number;
 }
 
@@ -218,6 +218,7 @@ export async function checkResolution(marketId: string): Promise<ResolutionResul
   // Find the winning outcome (price closest to 1)
   const outcomeAPrice = prices[0] ?? 0;
   const outcomeBPrice = prices[1] ?? 0;
+  const outcomeDrawPrice = prices[2] ?? 0; // For 3-outcome markets
 
   // If outcome A won (price ~= 1)
   if (outcomeAPrice > 0.99) {
@@ -237,6 +238,15 @@ export async function checkResolution(marketId: string): Promise<ResolutionResul
     };
   }
 
+  // If draw won (for 3-outcome markets like football)
+  if (outcomeDrawPrice > 0.99) {
+    return {
+      resolved: true,
+      winningOutcome: 'draw',
+      winningPrice: outcomeDrawPrice,
+    };
+  }
+
   // Market is closed but no clear winner (edge case)
   // This might happen during settlement process
   return { resolved: false };
@@ -253,6 +263,10 @@ export function transformMarketToEvent(market: GammaMarket) {
   const prices = market.outcomePrices.map((p) => parseFloat(p));
   const probA = prices[0] ?? 0.5;
   const probB = prices[1] ?? 1 - probA;
+  const probDraw = prices[2]; // May be undefined for binary markets
+
+  // Check if this is a 3-outcome market (supports draw)
+  const supportsDraw = market.outcomes.length === 3 && probDraw !== undefined;
 
   return {
     polymarket_market_id: market.id,
@@ -265,6 +279,10 @@ export function transformMarketToEvent(market: GammaMarket) {
     outcome_b_label: market.outcomes[1] ?? 'No',
     outcome_a_probability: probA,
     outcome_b_probability: probB,
+    // Draw support for 3-outcome markets
+    supports_draw: supportsDraw,
+    outcome_draw_label: supportsDraw ? (market.outcomes[2] ?? 'Draw') : undefined,
+    outcome_draw_probability: supportsDraw ? probDraw : undefined,
     status: market.closed
       ? 'resolved'
       : market.active
@@ -313,14 +331,14 @@ function categorizeMarket(market: GammaMarket): string {
  * Check if a market is valid for our game
  */
 export function isValidMarket(market: GammaMarket): boolean {
-  // Must have exactly 2 outcomes (binary)
-  if (market.outcomes.length !== 2) return false;
+  // Must have 2 or 3 outcomes (binary or with draw)
+  if (market.outcomes.length < 2 || market.outcomes.length > 3) return false;
 
   // Must not be archived
   if (market.archived) return false;
 
-  // Must have prices
-  if (!market.outcomePrices || market.outcomePrices.length < 2) return false;
+  // Must have prices for all outcomes
+  if (!market.outcomePrices || market.outcomePrices.length < market.outcomes.length) return false;
 
   return true;
 }

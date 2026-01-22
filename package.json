@@ -6,9 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "remotion:studio": "remotion studio remotion/Root.tsx",
+    "remotion:render": "remotion render remotion/Root.tsx PolydraftHype out/hype-video.mp4",
+    "remotion:preview": "remotion preview remotion/Root.tsx"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.409",
+    "@remotion/player": "^4.0.409",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.78.0",
     "framer-motion": "^12.27.1",
@@ -16,6 +21,7 @@
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
+    "remotion": "^4.0.409",
     "uuid": "^13.0.0",
     "zustand": "^5.0.10"
   },

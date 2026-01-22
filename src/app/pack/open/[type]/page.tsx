@@ -149,6 +149,11 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 ? event.outcome_a_probability
                 : 1 - (event.outcome_draw_probability ?? 0);
 
+          // Snapshot draw probability if the event supports draw
+          const drawProbabilitySnapshot = event.supports_draw
+            ? event.outcome_draw_probability
+            : undefined;
+
           return {
             id: `${packId}-pick-${index + 1}`,
             user_pack_id: packId,
@@ -159,6 +164,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             picked_at: now,
             probability_snapshot: probability,
             opposite_probability_snapshot: oppositeProbability,
+            draw_probability_snapshot: drawProbabilitySnapshot,
             is_resolved: false,
             is_correct: undefined,
             resolved_at: undefined,
