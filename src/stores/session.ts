@@ -7,10 +7,16 @@ interface SessionState {
   // Anonymous ID (always present)
   anonymousId: string;
 
+  // Profile ID from database (set after profile sync)
+  profileId: string | null;
+
   // Authenticated user (optional)
   userId: string | null;
   profile: UserProfile | null;
   isAuthenticated: boolean;
+
+  // Profile sync state
+  isProfileSynced: boolean;
 
   // Loading state
   isLoading: boolean;
@@ -19,6 +25,8 @@ interface SessionState {
   // Actions
   initialize: () => void;
   setProfile: (profile: UserProfile) => void;
+  setProfileId: (profileId: string) => void;
+  setProfileSynced: (synced: boolean) => void;
   setUserId: (userId: string) => void;
   logout: () => void;
   upgradeToUser: (userId: string, profile: UserProfile) => void;
@@ -29,9 +37,11 @@ export const useSessionStore = create<SessionState>()(
     (set, get) => ({
       // Initial state
       anonymousId: '',
+      profileId: null,
       userId: null,
       profile: null,
       isAuthenticated: false,
+      isProfileSynced: false,
       isLoading: true,
       isInitialized: false,
 
@@ -64,6 +74,16 @@ export const useSessionStore = create<SessionState>()(
         set({ profile });
       },
 
+      // Set profile ID from database
+      setProfileId: (profileId) => {
+        set({ profileId });
+      },
+
+      // Set profile sync state
+      setProfileSynced: (synced) => {
+        set({ isProfileSynced: synced });
+      },
+
       // Set authenticated user ID
       setUserId: (userId) => {
         set({
@@ -72,12 +92,14 @@ export const useSessionStore = create<SessionState>()(
         });
       },
 
-      // Logout (keep anonymous ID)
+      // Logout (keep anonymous ID but reset profile sync)
       logout: () => {
         set({
           userId: null,
           profile: null,
+          profileId: null,
           isAuthenticated: false,
+          isProfileSynced: false,
         });
       },
 
@@ -94,6 +116,7 @@ export const useSessionStore = create<SessionState>()(
       name: 'polydraft-session',
       partialize: (state) => ({
         anonymousId: state.anonymousId,
+        profileId: state.profileId,
         userId: state.userId,
       }),
       onRehydrateStorage: () => (state) => {
@@ -108,6 +131,8 @@ export const useSessionStore = create<SessionState>()(
 
 // Selector hooks for convenience
 export const useAnonymousId = () => useSessionStore((state) => state.anonymousId);
+export const useProfileId = () => useSessionStore((state) => state.profileId);
 export const useUserId = () => useSessionStore((state) => state.userId ?? state.anonymousId);
 export const useIsAuthenticated = () => useSessionStore((state) => state.isAuthenticated);
+export const useIsProfileSynced = () => useSessionStore((state) => state.isProfileSynced);
 export const useProfile = () => useSessionStore((state) => state.profile);

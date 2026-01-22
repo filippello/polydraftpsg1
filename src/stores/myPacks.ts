@@ -10,6 +10,7 @@ export interface StoredPack {
   pack: UserPack;
   picks: (UserPick & { event: Event })[];
   events: Event[];
+  syncedToDb: boolean; // Flag to track if pack has been synced to database
 }
 
 export interface PickPreview {
@@ -57,6 +58,8 @@ interface MyPacksState {
   updatePick: (packId: string, pickId: string, updates: Partial<UserPick>) => void;
   removePack: (packId: string) => void;
   resolvePicksForEvent: (packId: string, eventId: string, data: ResolvePickData) => void;
+  markPackSynced: (packId: string) => void;
+  getUnsyncedPacks: () => StoredPack[];
 
   // Selectors
   getPackById: (packId: string) => StoredPack | null;
@@ -147,7 +150,7 @@ export const useMyPacksStore = create<MyPacksState>()(
         set({
           packs: {
             ...packs,
-            [pack.id]: { pack, events, picks },
+            [pack.id]: { pack, events, picks, syncedToDb: false },
           },
           packOrder: [pack.id, ...packOrder],
         });
@@ -271,6 +274,32 @@ export const useMyPacksStore = create<MyPacksState>()(
             },
           },
         });
+      },
+
+      // Mark a pack as synced to database
+      markPackSynced: (packId) => {
+        const { packs } = get();
+        const storedPack = packs[packId];
+
+        if (!storedPack) return;
+
+        set({
+          packs: {
+            ...packs,
+            [packId]: {
+              ...storedPack,
+              syncedToDb: true,
+            },
+          },
+        });
+      },
+
+      // Get all packs that haven't been synced to database
+      getUnsyncedPacks: () => {
+        const { packs, packOrder } = get();
+        return packOrder
+          .map((id) => packs[id])
+          .filter((pack) => pack && !pack.syncedToDb);
       },
 
       // Get pack by ID

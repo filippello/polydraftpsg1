@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
@@ -9,7 +9,35 @@ import { useSessionStore } from '@/stores';
 export default function ProfilePage() {
   const profile = useSessionStore((state) => state.profile);
   const anonymousId = useSessionStore((state) => state.anonymousId);
+  const isProfileSynced = useSessionStore((state) => state.isProfileSynced);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [weeklyRank, setWeeklyRank] = useState<number | null>(null);
+
+  // Fetch weekly rank
+  useEffect(() => {
+    async function fetchWeeklyRank() {
+      if (!anonymousId) return;
+
+      try {
+        const response = await fetch(
+          `/api/leaderboard?limit=1&offset=0&anonymousId=${encodeURIComponent(anonymousId)}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.userRank) {
+            setWeeklyRank(data.userRank);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching weekly rank:', error);
+      }
+    }
+
+    if (isProfileSynced) {
+      fetchWeeklyRank();
+    }
+  }, [anonymousId, isProfileSynced]);
 
   const handleResetData = () => {
     // Clear all localStorage data
@@ -19,7 +47,7 @@ export default function ProfilePage() {
     window.location.reload();
   };
 
-  // Mock stats for v0
+  // Use profile stats from database, fallback to 0
   const stats = {
     totalPoints: profile?.total_points ?? 0,
     packsOpened: profile?.total_packs_opened ?? 0,
@@ -28,10 +56,13 @@ export default function ProfilePage() {
     currentStreak: profile?.current_streak ?? 0,
     longestStreak: profile?.longest_streak ?? 0,
     bestRank: profile?.best_weekly_rank ?? '-',
-    accuracy: profile?.total_picks_made
+    accuracy: profile?.total_picks_made && profile.total_picks_made > 0
       ? ((profile.total_correct_picks / profile.total_picks_made) * 100).toFixed(1)
       : '0',
   };
+
+  // Display name from database or fallback
+  const displayName = profile?.display_name ?? profile?.username ?? 'Anonymous Player';
 
   return (
     <main className="flex-1 flex flex-col min-h-screen">
@@ -47,12 +78,15 @@ export default function ProfilePage() {
           <div className="w-20 h-20 mx-auto mb-3 bg-game-secondary rounded-full flex items-center justify-center border-4 border-game-accent">
             <span className="text-3xl">👤</span>
           </div>
-          <h1 className="text-xl font-bold">
-            {profile?.username ?? 'Anonymous Player'}
-          </h1>
+          <h1 className="text-xl font-bold">{displayName}</h1>
           <p className="text-xs text-gray-500 mt-1">
             ID: {anonymousId?.slice(0, 8)}...
           </p>
+          {!isProfileSynced && (
+            <p className="text-xs text-yellow-500 mt-1">
+              Syncing profile...
+            </p>
+          )}
         </motion.div>
 
         {/* Main Stats */}
@@ -64,7 +98,7 @@ export default function ProfilePage() {
         >
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
-              <p className="text-3xl font-bold text-game-gold">{stats.totalPoints}</p>
+              <p className="text-3xl font-bold text-game-gold">{stats.totalPoints.toFixed(1)}</p>
               <p className="text-xs text-gray-400">Total Points</p>
             </div>
             <div className="text-center">
@@ -108,12 +142,14 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-400">Best Weekly Rank</p>
-              <p className="text-lg font-bold">#{stats.bestRank}</p>
+              <p className="text-lg font-bold">
+                {typeof stats.bestRank === 'number' ? `#${stats.bestRank}` : stats.bestRank}
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-400">Best Week Points</p>
+              <p className="text-xs text-gray-400">Current Week Rank</p>
               <p className="text-lg font-bold text-game-gold">
-                {profile?.best_weekly_points ?? 0}
+                {weeklyRank ? `#${weeklyRank}` : '-'}
               </p>
             </div>
           </div>
@@ -128,9 +164,15 @@ export default function ProfilePage() {
         >
           <h3 className="text-sm font-bold mb-3">Recent Activity</h3>
           <div className="space-y-2">
-            <p className="text-sm text-gray-500 text-center py-4">
-              No recent activity yet
-            </p>
+            {stats.packsOpened > 0 ? (
+              <p className="text-sm text-gray-400 text-center py-2">
+                {stats.packsOpened} packs opened this week
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No recent activity yet
+              </p>
+            )}
           </div>
         </motion.div>
 
@@ -141,8 +183,8 @@ export default function ProfilePage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          <button className="w-full btn-pixel-secondary">
-            Create Account
+          <button className="w-full btn-pixel-secondary" disabled>
+            Create Account (Coming Soon)
           </button>
           <p className="text-xs text-center text-gray-500">
             Save your progress and compete on the leaderboard
@@ -167,7 +209,7 @@ export default function ProfilePage() {
           ) : (
             <div className="space-y-2">
               <p className="text-xs text-center text-game-error">
-                This will delete all your packs and progress!
+                This will delete all your local packs and progress!
               </p>
               <div className="flex gap-2">
                 <button

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { PackSprite } from '@/components/sprites/PackSprite';
 import { SwipeCard } from '@/components/game/SwipeCard';
-import { useCurrentPackStore, useMyPacksStore } from '@/stores';
+import { useCurrentPackStore, useMyPacksStore, useSessionStore } from '@/stores';
 import {
   calculateMaxPotentialPoints,
   calculateCombinedProbability,
@@ -47,6 +47,8 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
   const { setPack, setDraftPick } = useCurrentPackStore();
   const addPack = useMyPacksStore((state) => state.addPack);
+  const markPackSynced = useMyPacksStore((state) => state.markPackSynced);
+  const anonymousId = useSessionStore((state) => state.anonymousId);
 
   // Initialize pack with mock events
   useEffect(() => {
@@ -103,6 +105,54 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       setTimeout(() => setPhase('confirming'), 300);
     }
   };
+
+  // Sync pack to database
+  const syncPackToDb = useCallback(async (
+    packData: {
+      id: string;
+      packTypeId: string;
+      packTypeSlug: string;
+      openedAt: string;
+    },
+    picksData: Array<{
+      id: string;
+      eventId: string;
+      position: number;
+      pickedOutcome: Outcome;
+      pickedAt: string;
+      probabilitySnapshot: number;
+      oppositeProbabilitySnapshot: number;
+      drawProbabilitySnapshot?: number;
+    }>
+  ) => {
+    if (!anonymousId) return;
+
+    try {
+      const response = await fetch('/api/packs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          anonymousId,
+          pack: packData,
+          picks: picksData,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          markPackSynced(packData.id);
+        }
+      } else {
+        console.error('Failed to sync pack to database:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error syncing pack to database:', error);
+      // Pack is still saved locally, will work in local-first mode
+    }
+  }, [anonymousId, markPackSynced]);
 
   // Save to myPacks when confirming starts
   useEffect(() => {
@@ -175,10 +225,30 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
         }
       );
 
-      // Save to myPacks store
+      // Save to myPacks store (local-first)
       addPack(userPack, events, userPicks);
+
+      // Sync to database in background
+      syncPackToDb(
+        {
+          id: packId,
+          packTypeId: type,
+          packTypeSlug: type,
+          openedAt: now,
+        },
+        userPicks.map((pick) => ({
+          id: pick.id,
+          eventId: pick.event_id,
+          position: pick.position,
+          pickedOutcome: pick.picked_outcome,
+          pickedAt: pick.picked_at,
+          probabilitySnapshot: pick.probability_snapshot,
+          oppositeProbabilitySnapshot: pick.opposite_probability_snapshot,
+          drawProbabilitySnapshot: pick.draw_probability_snapshot,
+        }))
+      );
     }
-  }, [phase, packId, pickedEvents, type, addPack]);
+  }, [phase, packId, pickedEvents, type, addPack, events, syncPackToDb]);
 
   // Calculate jackpot potential
   const jackpotData = pickedEvents.length === events.length
