@@ -1,13 +1,16 @@
 /**
  * Scoring Calculator for Polydraft
  *
- * The scoring system rewards picking underdogs (low probability events)
- * while still giving points for correct favorite picks.
+ * Works like Polymarket: each pick is a $1 bet.
+ * Payout = $1 * (1 / probability)
  *
- * Formula: Points = BASE_POINTS * (1 / probability) + tier_bonus
- * - Lower probability = higher reward
- * - Bonus tiers for extreme underdogs
- * - Capped at 150 points per pick
+ * Examples:
+ * - 50% probability = 2x odds = $2 return
+ * - 20% probability = 5x odds = $5 return
+ * - 10% probability = 10x odds = $10 return
+ * - 5% probability = 20x odds = $20 return
+ *
+ * Pack = $5 total (5 picks x $1 each)
  */
 
 export interface ScoringParams {
@@ -24,9 +27,7 @@ export interface ScoringResult {
   tier: 'longshot' | 'underdog' | 'slight_underdog' | 'tossup' | 'favorite' | 'heavy_favorite';
 }
 
-const BASE_POINTS = 10;
-const MAX_POINTS = 150;
-const MAX_MULTIPLIER = 10;
+const BASE_POINTS = 1; // $1 bet per pick
 
 /**
  * Get the tier classification based on probability
@@ -41,16 +42,16 @@ export function getTier(probability: number): ScoringResult['tier'] {
 }
 
 /**
- * Get bonus points based on tier
+ * Get bonus points based on tier (small bonuses for picking underdogs)
  */
 export function getTierBonus(tier: ScoringResult['tier']): number {
   switch (tier) {
     case 'longshot':
-      return 50;
+      return 0.50; // +$0.50 bonus
     case 'underdog':
-      return 20;
+      return 0.25; // +$0.25 bonus
     case 'slight_underdog':
-      return 5;
+      return 0.10; // +$0.10 bonus
     default:
       return 0;
   }
@@ -58,16 +59,17 @@ export function getTierBonus(tier: ScoringResult['tier']): number {
 
 /**
  * Calculate points for a single pick
+ * Each pick represents a $1 bet with standard betting odds
  *
  * @example
- * // Underdog at 10% - correct
+ * // Underdog at 10% - correct ($1 bet returns $10 + $0.50 bonus)
  * calculatePoints({ probabilityAtPick: 0.10, isCorrect: true })
- * // Returns: { points: 100, multiplier: 10, tierBonus: 0, tier: 'longshot' }
+ * // Returns: { points: 10.50, multiplier: 10, tierBonus: 0.50, tier: 'longshot' }
  *
  * @example
- * // Favorite at 75% - correct
+ * // Favorite at 75% - correct ($1 bet returns $1.33)
  * calculatePoints({ probabilityAtPick: 0.75, isCorrect: true })
- * // Returns: { points: 13.33, multiplier: 1.33, tierBonus: 0, tier: 'favorite' }
+ * // Returns: { points: 1.33, multiplier: 1.33, tierBonus: 0, tier: 'favorite' }
  */
 export function calculatePoints({ probabilityAtPick, isCorrect }: ScoringParams): ScoringResult {
   const tier = getTier(probabilityAtPick);
@@ -82,15 +84,12 @@ export function calculatePoints({ probabilityAtPick, isCorrect }: ScoringParams)
     };
   }
 
-  // Core multiplier: inverse of probability
+  // Core multiplier: inverse of probability (like Polymarket)
   // Lower probability = higher reward
-  let multiplier = 1 / probabilityAtPick;
-
-  // Cap multiplier to prevent extreme values
-  multiplier = Math.min(multiplier, MAX_MULTIPLIER);
+  const multiplier = 1 / probabilityAtPick;
 
   const basePoints = BASE_POINTS * multiplier;
-  const totalPoints = Math.min(basePoints + tierBonus, MAX_POINTS);
+  const totalPoints = basePoints + tierBonus;
 
   return {
     points: Math.round(totalPoints * 100) / 100,
@@ -105,13 +104,13 @@ export function calculatePoints({ probabilityAtPick, isCorrect }: ScoringParams)
  */
 export function calculatePackBonus(correctCount: number, totalPicks: number = 5): number {
   if (correctCount === totalPicks) {
-    return 100; // Perfect pack!
+    return 5; // Perfect pack! +$5 bonus
   }
   if (correctCount === totalPicks - 1) {
-    return 30; // Excellent
+    return 2; // Excellent +$2 bonus
   }
   if (correctCount === totalPicks - 2) {
-    return 10; // Good
+    return 1; // Good +$1 bonus
   }
   return 0;
 }

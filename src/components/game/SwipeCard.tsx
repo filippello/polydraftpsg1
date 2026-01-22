@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import type { Event, Outcome } from '@/types';
-import { formatProbability, getTier, getTierColor } from '@/lib/scoring/calculator';
+import { formatProbability } from '@/lib/scoring/calculator';
 import {
   getEventRarity,
   getRarityConfig,
@@ -34,11 +34,6 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
 
   // Draw overlay opacity (vertical swipe)
   const drawOverlayOpacity = useTransform(y, [-100, 0, 100], [1, 0, 1]);
-
-  const tierA = getTier(event.outcome_a_probability);
-  const tierB = getTier(event.outcome_b_probability);
-  const colorA = getTierColor(tierA);
-  const colorB = getTierColor(tierB);
 
   // Get rarity info (from rarityInfo if available, or calculate it)
   const rarity = event.rarityInfo?.rarity ?? getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
