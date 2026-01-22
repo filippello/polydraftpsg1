@@ -7,7 +7,16 @@
 
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import sportsWeek3Data from '../../../../../input/json/sports_week_3.json';
+
+// Dynamic import to avoid build failure when file doesn't exist in production
+async function loadSeedData(): Promise<InputData | null> {
+  try {
+    const data = await import('../../../../../input/json/sports_week_3.json');
+    return data.default as InputData;
+  } catch {
+    return null;
+  }
+}
 
 interface InputEvent {
   id: string;
@@ -57,8 +66,16 @@ function getSubcategoryFromSport(sport: string, slug: string): string {
 }
 
 export async function POST() {
+  const data = await loadSeedData();
+
+  if (!data) {
+    return NextResponse.json(
+      { error: 'Seed data not available in this environment' },
+      { status: 404 }
+    );
+  }
+
   const supabase = createServiceClient();
-  const data = sportsWeek3Data as InputData;
 
   const results: { success: string[]; failed: Array<{ slug: string; error: string }> } = {
     success: [],
@@ -153,8 +170,18 @@ export async function POST() {
 }
 
 export async function GET() {
+  const data = await loadSeedData();
+
+  if (!data) {
+    return NextResponse.json({
+      message: 'Seed data not available in this environment',
+      available: false,
+    });
+  }
+
   return NextResponse.json({
     message: 'POST to this endpoint to seed week 3 events',
-    events_count: (sportsWeek3Data as InputData).events.length,
+    events_count: data.events.length,
+    available: true,
   });
 }
