@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       {
         id: pack.id,
         profileId: profile.id,
-        packTypeId: pack.packTypeId,
+        anonymousId: anonymousId,
         packTypeSlug: pack.packTypeSlug,
         openedAt: pack.openedAt,
       },

@@ -48,7 +48,7 @@ export function getCurrentWeekEnd(): Date {
 export interface CreatePackInput {
   id: string;
   profileId: string;
-  packTypeId: string;
+  anonymousId: string;
   packTypeSlug: string;
   openedAt: string;
 }
@@ -70,18 +70,45 @@ export interface CreatePickInput {
 // ============================================
 
 /**
+ * Get pack type by slug
+ */
+async function getPackTypeBySlug(slug: string): Promise<{ id: string } | null> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from('pack_types')
+    .select('id')
+    .eq('slug', slug)
+    .single();
+
+  if (error) {
+    console.error('Error fetching pack type:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
  * Create a new user pack in the database
  */
 export async function createPack(input: CreatePackInput): Promise<string | null> {
   const supabase = createServiceClient();
+
+  // Look up the pack type by slug to get the real UUID
+  const packType = await getPackTypeBySlug(input.packTypeSlug);
+  if (!packType) {
+    console.error('Pack type not found for slug:', input.packTypeSlug);
+    return null;
+  }
 
   const { data, error } = await supabase
     .from('user_packs')
     .insert({
       id: input.id,
       profile_id: input.profileId,
-      pack_type_id: input.packTypeId,
-      pack_type_slug: input.packTypeSlug,
+      anonymous_id: input.anonymousId,
+      pack_type_id: packType.id,
       opened_at: input.openedAt,
       resolution_status: 'pending',
       current_reveal_index: 0,
@@ -102,28 +129,73 @@ export async function createPack(input: CreatePackInput): Promise<string | null>
 }
 
 /**
+ * Look up event UUID by slug (the slug is used as ID in the pool)
+ */
+async function getEventUuidBySlug(slug: string): Promise<string | null> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from('events')
+    .select('id')
+    .eq('polymarket_slug', slug)
+    .single();
+
+  if (error) {
+    console.error('Error fetching event by slug:', slug, error);
+    return null;
+  }
+
+  return data?.id ?? null;
+}
+
+/**
  * Create picks for a pack
  */
 export async function createPicks(picks: CreatePickInput[]): Promise<boolean> {
   const supabase = createServiceClient();
 
-  const picksToInsert = picks.map((pick) => ({
-    id: pick.id,
-    user_pack_id: pick.userPackId,
-    event_id: pick.eventId,
-    position: pick.position,
-    picked_outcome: pick.pickedOutcome,
-    picked_at: pick.pickedAt,
-    probability_snapshot: pick.probabilitySnapshot,
-    opposite_probability_snapshot: pick.oppositeProbabilitySnapshot,
-    draw_probability_snapshot: pick.drawProbabilitySnapshot,
-    is_resolved: false,
-    points_awarded: 0,
-    reveal_animation_played: false,
-    created_at: pick.pickedAt,
-  }));
+  // Look up real UUIDs for all events
+  const picksToInsert = await Promise.all(
+    picks.map(async (pick) => {
+      // The eventId from the pool is actually the slug, look up the real UUID
+      const realEventId = await getEventUuidBySlug(pick.eventId);
 
-  const { error } = await supabase.from('user_picks').insert(picksToInsert);
+      if (!realEventId) {
+        console.error('Event not found in database for slug:', pick.eventId);
+        return null;
+      }
+
+      return {
+        // Don't pass id - let the database generate a proper UUID
+        user_pack_id: pick.userPackId,
+        event_id: realEventId,
+        position: pick.position,
+        picked_outcome: pick.pickedOutcome,
+        picked_at: pick.pickedAt,
+        probability_snapshot: pick.probabilitySnapshot,
+        opposite_probability_snapshot: pick.oppositeProbabilitySnapshot,
+        draw_probability_snapshot: pick.drawProbabilitySnapshot,
+        is_resolved: false,
+        points_awarded: 0,
+        reveal_animation_played: false,
+        created_at: pick.pickedAt,
+      };
+    })
+  );
+
+  // Filter out any null picks (events not found)
+  const validPicks = picksToInsert.filter((p) => p !== null);
+
+  if (validPicks.length === 0) {
+    console.error('No valid picks to insert - events not found in database');
+    return false;
+  }
+
+  if (validPicks.length !== picks.length) {
+    console.warn(`Only ${validPicks.length} of ${picks.length} events found in database`);
+  }
+
+  const { error } = await supabase.from('user_picks').insert(validPicks);
 
   if (error) {
     console.error('Error creating picks:', error);
