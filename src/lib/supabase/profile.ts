@@ -68,6 +68,16 @@ export async function getOrCreateAnonymousProfile(
     // Fetch the full profile
     const profile = await fetchProfileById(profileId);
     if (profile) {
+      // Check if display_name needs to be set
+      if (!profile.display_name) {
+        const displayName = generateRandomDisplayName();
+        await updateProfileDisplayName(profileId, displayName);
+        // Re-fetch to get updated profile
+        const updatedProfile = await fetchProfileById(profileId);
+        if (updatedProfile) {
+          return { profileId, profile: updatedProfile };
+        }
+      }
       return { profileId, profile };
     }
   }
@@ -81,6 +91,19 @@ export async function getOrCreateAnonymousProfile(
     .single();
 
   if (existingProfile && !selectError) {
+    // Check if display_name needs to be set
+    if (!existingProfile.display_name) {
+      const displayName = generateRandomDisplayName();
+      await updateProfileDisplayName(existingProfile.id, displayName);
+      // Re-fetch to get updated profile
+      const updatedProfile = await fetchProfileById(existingProfile.id);
+      if (updatedProfile) {
+        return {
+          profileId: existingProfile.id,
+          profile: updatedProfile,
+        };
+      }
+    }
     return {
       profileId: existingProfile.id,
       profile: existingProfile as UserProfile,
