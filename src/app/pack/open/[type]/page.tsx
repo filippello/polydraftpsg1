@@ -102,13 +102,12 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     );
   }, [type, setPack, packId, events]);
 
-  // Auto-advance from opening to revealing
-  useEffect(() => {
+  // Handle tap to open pack
+  const handleOpenPack = () => {
     if (phase === 'opening') {
-      const timer = setTimeout(() => setPhase('revealing'), 2000);
-      return () => clearTimeout(timer);
+      setPhase('revealing');
     }
-  }, [phase]);
+  };
 
   // Reveal cards one by one
   useEffect(() => {
@@ -362,10 +361,11 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
         {phase === 'opening' && (
           <motion.div
             key="opening"
-            className="flex-1 flex flex-col items-center justify-center"
+            className="flex-1 flex flex-col items-center justify-center cursor-pointer"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.5 }}
+            onClick={handleOpenPack}
           >
             <motion.div
               animate={{
@@ -376,15 +376,17 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 duration: 0.3,
                 repeat: Infinity,
               }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               <PackSprite type={type as 'sports'} size="lg" glowing />
             </motion.div>
             <motion.p
               className="mt-6 text-xl font-bold font-pixel-heading tracking-wider"
               animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
+              transition={{ duration: 2, repeat: Infinity }}
             >
-              Opening...
+              Tap to Open
             </motion.p>
           </motion.div>
         )}
