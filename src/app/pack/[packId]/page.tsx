@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { QueueCard } from '@/components/game/QueueCard';
 import { RevealAnimation } from '@/components/animations/RevealAnimation';
 import { PackSummary } from '@/components/game/PackSummary';
-import { useMyPacksStore, useStoredPack } from '@/stores';
+import { useMyPacksStore, useStoredPack, useSessionStore, usePackSummaries } from '@/stores';
 import { useEventSync } from '@/hooks/useEventSync';
 import type { UserPick, Event } from '@/types';
 
@@ -18,6 +18,8 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
   // Load pack from myPacks store
   const storedPack = useStoredPack(packId);
   const updatePick = useMyPacksStore((state) => state.updatePick);
+  const anonymousId = useSessionStore((state) => state.anonymousId);
+  const packSummaries = usePackSummaries();
 
   const [picks, setPicks] = useState<(UserPick & { event: Event })[]>([]);
   const [currentRevealIndex, setCurrentRevealIndex] = useState(0);
@@ -32,15 +34,73 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
   // Poll for event resolutions
   useEventSync(packId);
 
-  // Handle "Open Another Pack" click - show buy notification
-  const handleOpenAnotherPack = () => {
+  // Handle "Open Another Pack" click - check availability first
+  const handleOpenAnotherPack = async () => {
     setSummaryDismissed(true); // Prevent summary from re-opening
     setShowSummary(false);
+
+    // Count packs opened this week from local storage (for instant/accurate feedback)
+    const getLocalPacksThisWeek = () => {
+      const now = new Date();
+      const day = now.getUTCDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now);
+      monday.setUTCDate(now.getUTCDate() + diff);
+      monday.setUTCHours(0, 0, 0, 0);
+
+      return packSummaries.filter((pack) => {
+        const openedAt = new Date(pack.openedAt);
+        return openedAt >= monday;
+      }).length;
+    };
+
+    const localPacksThisWeek = getLocalPacksThisWeek();
+    const weeklyLimit = 2;
+
+    // Check local count first (most accurate since DB sync might be delayed)
+    if (localPacksThisWeek >= weeklyLimit) {
+      setShowBuyToast(true);
+      setTimeout(() => setShowBuyToast(false), 3000);
+      console.log('[Analytics] User clicked "Open Another Pack" - no packs (local check)');
+      return;
+    }
+
+    // Also check API for extra safety
+    if (anonymousId) {
+      try {
+        const response = await fetch(
+          `/api/packs/availability?anonymousId=${encodeURIComponent(anonymousId)}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const apiPacksOpened = data.packsOpenedThisWeek ?? 0;
+
+          // Use maximum of local and API count (most restrictive)
+          const packsOpenedThisWeek = Math.max(localPacksThisWeek, apiPacksOpened);
+          const packsRemaining = Math.max(0, weeklyLimit - packsOpenedThisWeek);
+
+          if (packsRemaining > 0) {
+            // Has packs remaining, navigate to open new pack
+            window.location.href = '/pack/open/sports';
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking pack availability:', error);
+      }
+    }
+
+    // If we got here and local check passed, allow opening (local-first approach)
+    if (localPacksThisWeek < weeklyLimit) {
+      window.location.href = '/pack/open/sports';
+      return;
+    }
+
+    // No packs remaining, show buy toast
     setShowBuyToast(true);
-    // Auto-hide after 3 seconds
     setTimeout(() => setShowBuyToast(false), 3000);
-    // TODO: Track this click for analytics
-    console.log('[Analytics] User clicked "Open Another Pack"');
+    console.log('[Analytics] User clicked "Open Another Pack" - no packs');
   };
 
   // Handle "View My Packs" click from summary
