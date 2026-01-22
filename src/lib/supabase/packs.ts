@@ -8,6 +8,40 @@ import { createServiceClient } from './server';
 import type { UserPack, UserPick, Outcome } from '@/types';
 
 // ============================================
+// Constants
+// ============================================
+
+export const WEEKLY_PACK_LIMIT = 2;
+
+// ============================================
+// Week Calculations
+// ============================================
+
+/**
+ * Get the start of the current week (Monday 00:00:00 UTC)
+ */
+export function getCurrentWeekStart(): Date {
+  const now = new Date();
+  const day = now.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day; // Adjust so Monday is first day
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() + diff);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday;
+}
+
+/**
+ * Get the end of the current week (Sunday 23:59:59 UTC)
+ */
+export function getCurrentWeekEnd(): Date {
+  const weekStart = getCurrentWeekStart();
+  const sunday = new Date(weekStart);
+  sunday.setUTCDate(weekStart.getUTCDate() + 6);
+  sunday.setUTCHours(23, 59, 59, 999);
+  return sunday;
+}
+
+// ============================================
 // Types
 // ============================================
 
@@ -318,4 +352,67 @@ export async function packExists(packId: string): Promise<boolean> {
   }
 
   return !!data;
+}
+
+// ============================================
+// Weekly Pack Limit
+// ============================================
+
+export interface WeeklyPackStatus {
+  packsOpenedThisWeek: number;
+  packsRemaining: number;
+  canOpenPack: boolean;
+  weeklyLimit: number;
+  weekStartsAt: string;
+  weekEndsAt: string;
+}
+
+/**
+ * Count how many packs a profile has opened this week
+ */
+export async function countWeeklyPacks(profileId: string): Promise<number> {
+  const supabase = createServiceClient();
+  const weekStart = getCurrentWeekStart();
+  const weekEnd = getCurrentWeekEnd();
+
+  const { count, error } = await supabase
+    .from('user_packs')
+    .select('*', { count: 'exact', head: true })
+    .eq('profile_id', profileId)
+    .gte('opened_at', weekStart.toISOString())
+    .lte('opened_at', weekEnd.toISOString());
+
+  if (error) {
+    console.error('Error counting weekly packs:', error);
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+/**
+ * Get the weekly pack status for a profile
+ */
+export async function getWeeklyPackStatus(profileId: string): Promise<WeeklyPackStatus> {
+  const packsOpenedThisWeek = await countWeeklyPacks(profileId);
+  const packsRemaining = Math.max(0, WEEKLY_PACK_LIMIT - packsOpenedThisWeek);
+  const weekStart = getCurrentWeekStart();
+  const weekEnd = getCurrentWeekEnd();
+
+  return {
+    packsOpenedThisWeek,
+    packsRemaining,
+    canOpenPack: packsRemaining > 0,
+    weeklyLimit: WEEKLY_PACK_LIMIT,
+    weekStartsAt: weekStart.toISOString(),
+    weekEndsAt: weekEnd.toISOString(),
+  };
+}
+
+/**
+ * Check if a profile can open a pack (hasn't reached weekly limit)
+ */
+export async function canOpenPack(profileId: string): Promise<boolean> {
+  const status = await getWeeklyPackStatus(profileId);
+  return status.canOpenPack;
 }

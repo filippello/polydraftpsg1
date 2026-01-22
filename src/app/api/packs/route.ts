@@ -3,6 +3,8 @@ import {
   createPackWithPicks,
   getPacksByProfileId,
   packExists,
+  getWeeklyPackStatus,
+  WEEKLY_PACK_LIMIT,
 } from '@/lib/supabase/packs';
 import { fetchProfileByAnonymousId } from '@/lib/supabase/profile';
 import type { Outcome } from '@/types';
@@ -66,6 +68,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check weekly pack limit
+    const weeklyStatus = await getWeeklyPackStatus(profile.id);
+    if (!weeklyStatus.canOpenPack) {
+      return NextResponse.json(
+        {
+          error: 'Weekly pack limit reached',
+          code: 'WEEKLY_LIMIT_REACHED',
+          weeklyStatus,
+        },
+        { status: 429 }
+      );
+    }
+
     // Create the pack with picks
     const result = await createPackWithPicks(
       {
@@ -109,7 +124,7 @@ export async function POST(request: Request) {
 }
 
 // GET /api/packs?anonymousId=xxx
-// Returns all packs for the given anonymousId
+// Returns all packs for the given anonymousId plus weekly status
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -127,14 +142,24 @@ export async function GET(request: Request) {
     if (!profile) {
       return NextResponse.json({
         packs: [],
+        weeklyStatus: {
+          packsOpenedThisWeek: 0,
+          packsRemaining: WEEKLY_PACK_LIMIT,
+          canOpenPack: true,
+          weeklyLimit: WEEKLY_PACK_LIMIT,
+        },
       });
     }
 
     // Get all packs for this profile
     const packs = await getPacksByProfileId(profile.id);
 
+    // Get weekly status
+    const weeklyStatus = await getWeeklyPackStatus(profile.id);
+
     return NextResponse.json({
       packs,
+      weeklyStatus,
     });
   } catch (error) {
     console.error('Error in GET /api/packs:', error);

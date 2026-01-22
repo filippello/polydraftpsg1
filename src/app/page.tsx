@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { PackSprite } from '@/components/sprites/PackSprite';
@@ -9,10 +9,21 @@ import { BottomNav } from '@/components/layout/BottomNav';
 import { PackListItem } from '@/components/packs';
 import { useSessionStore, usePackSummaries, useTotalPendingReveals } from '@/stores';
 
+interface WeeklyPackStatus {
+  packsOpenedThisWeek: number;
+  packsRemaining: number;
+  canOpenPack: boolean;
+  weeklyLimit: number;
+  weekEndsAt?: string;
+}
+
 export default function HomePage() {
   const profile = useSessionStore((state) => state.profile);
+  const anonymousId = useSessionStore((state) => state.anonymousId);
+  const isProfileSynced = useSessionStore((state) => state.isProfileSynced);
   const [isHovering, setIsHovering] = useState(false);
   const [showBuyToast, setShowBuyToast] = useState(false);
+  const [weeklyStatus, setWeeklyStatus] = useState<WeeklyPackStatus | null>(null);
 
   // Get active packs from myPacks store
   const packSummaries = usePackSummaries();
@@ -21,18 +32,59 @@ export default function HomePage() {
   // Filter active (non-completed) packs
   const activePacks = packSummaries.filter((p) => p.status !== 'completed');
   const previewPacks = activePacks.slice(0, 2); // Show max 2 on home
-  const remainingPacks = activePacks.length - previewPacks.length;
+  const remainingActivePacks = activePacks.length - previewPacks.length;
   const hasActivePacks = activePacks.length > 0;
-  const hasAnyPacks = packSummaries.length > 0;
 
   const weeklyPoints = profile?.total_points ?? 0;
   const weeklyRank = profile?.best_weekly_rank ?? '-';
+
+  // Count packs opened this week from local storage (for instant feedback)
+  const localPacksThisWeek = (() => {
+    // Get start of current week (Monday 00:00:00 UTC)
+    const now = new Date();
+    const day = now.getUTCDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setUTCDate(now.getUTCDate() + diff);
+    monday.setUTCHours(0, 0, 0, 0);
+
+    return packSummaries.filter((pack) => {
+      const openedAt = new Date(pack.openedAt);
+      return openedAt >= monday;
+    }).length;
+  })();
+
+  // Fetch weekly pack status from API
+  useEffect(() => {
+    async function fetchWeeklyStatus() {
+      if (!anonymousId || !isProfileSynced) return;
+
+      try {
+        const response = await fetch(
+          `/api/packs/availability?anonymousId=${encodeURIComponent(anonymousId)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setWeeklyStatus(data);
+        }
+      } catch (error) {
+        console.error('Error fetching weekly status:', error);
+      }
+    }
+
+    fetchWeeklyStatus();
+  }, [anonymousId, isProfileSynced]);
+
+  // Use the maximum of local count and API count (most restrictive)
+  const weeklyLimit = weeklyStatus?.weeklyLimit ?? 2;
+  const apiPacksOpened = weeklyStatus?.packsOpenedThisWeek ?? 0;
+  const packsOpenedThisWeek = Math.max(localPacksThisWeek, apiPacksOpened);
+  const packsRemaining = Math.max(0, weeklyLimit - packsOpenedThisWeek);
 
   // Handle buy pack click
   const handleBuyPack = () => {
     setShowBuyToast(true);
     setTimeout(() => setShowBuyToast(false), 3000);
-    // TODO: Track for analytics
     console.log('[Analytics] User clicked "Buy Pack" on Home');
   };
 
@@ -59,108 +111,127 @@ export default function HomePage() {
 
         {/* Pack Area */}
         <div className="flex-1 flex flex-col items-center justify-center">
-          {hasAnyPacks ? (
-            // Has packs - show Buy New Pack CTA + active packs preview
-            <div className="text-center w-full max-w-sm">
-              {/* Pack with Buy New Pack overlay */}
-              <motion.div
-                className="cursor-pointer relative inline-block mb-4"
-                onHoverStart={() => setIsHovering(true)}
-                onHoverEnd={() => setIsHovering(false)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleBuyPack}
-              >
-                <PackSprite
-                  type="sports"
-                  size="lg"
-                  glowing={isHovering || (hasActivePacks && pendingReveals > 0)}
-                />
-                {/* Buy New Pack tag */}
-                <motion.div
-                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-game-gold text-black px-3 py-1 rounded-full text-sm font-bold shadow-lg whitespace-nowrap"
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  Buy New Pack
-                </motion.div>
-              </motion.div>
+          <div className="text-center w-full max-w-sm">
+            {/* Pack Display - Visual stack based on packs remaining */}
+            {packsRemaining > 0 ? (
+              // Has packs to open - show as card hand
+              <>
+                <p className="text-sm text-gray-400 mb-6">Weekly Packs Available!</p>
 
-              {/* Active Packs Preview */}
-              {hasActivePacks && (
-                <>
-                  <p className="text-sm text-gray-400 mb-3">
-                    Games in progress
-                    {pendingReveals > 0 && (
-                      <span className="text-game-gold font-bold ml-2">
-                        • {pendingReveals} ready!
-                      </span>
-                    )}
-                  </p>
-
-                  <div className="space-y-2 mb-4">
-                    {previewPacks.map((pack, index) => (
-                      <PackListItem key={pack.id} pack={pack} index={index} />
-                    ))}
-                  </div>
-
-                  {remainingPacks > 0 && (
-                    <Link
-                      href="/my-packs"
-                      className="btn-pixel inline-block"
-                    >
-                      View More ({remainingPacks} more)
+                {/* Card hand layout */}
+                <div className="relative flex justify-center items-end h-48 mb-4">
+                  {packsRemaining >= 2 && (
+                    // Left card (slightly rotated left)
+                    <Link href="/pack/open/sports" className="absolute">
+                      <motion.div
+                        className="cursor-pointer origin-bottom"
+                        style={{ rotate: -8, x: -50 }}
+                        whileHover={{ y: -20, rotate: -5, scale: 1.05, zIndex: 10 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      >
+                        <PackSprite type="sports" size="lg" />
+                      </motion.div>
                     </Link>
                   )}
-                </>
-              )}
 
-              {/* No active packs - just link to history */}
-              {!hasActivePacks && (
-                <Link
-                  href="/my-packs"
-                  className="mt-4 text-sm text-gray-400 hover:text-white inline-block"
+                  {/* Right card (main/front card, slightly rotated right) */}
+                  <Link href="/pack/open/sports" className="absolute">
+                    <motion.div
+                      className="cursor-pointer origin-bottom"
+                      style={{ rotate: packsRemaining >= 2 ? 8 : 0, x: packsRemaining >= 2 ? 50 : 0 }}
+                      whileHover={{ y: -20, rotate: packsRemaining >= 2 ? 5 : 0, scale: 1.05, zIndex: 10 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    >
+                      <PackSprite type="sports" size="lg" glowing />
+                    </motion.div>
+                  </Link>
+                </div>
+
+                <motion.p
+                  className="text-lg font-bold"
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
                 >
-                  View pack history →
-                </Link>
-              )}
-            </div>
-          ) : (
-            // No packs at all - show free weekly pack
-            <div className="text-center">
-              <p className="text-sm text-gray-400 mb-4">Weekly Pack Available!</p>
+                  Tap to Open
+                </motion.p>
 
-              <motion.div
-                className="cursor-pointer"
-                onHoverStart={() => setIsHovering(true)}
-                onHoverEnd={() => setIsHovering(false)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                animate={isHovering ? { y: [0, -5, 0] } : {}}
-                transition={{ duration: 0.5, repeat: isHovering ? Infinity : 0 }}
-              >
-                <Link href="/pack/open/sports">
+                <p className="mt-2 text-xs text-gray-500">
+                  5 events • Make your picks • Win USD
+                </p>
+              </>
+            ) : (
+              // No packs remaining - show Buy New Pack
+              <>
+                <motion.div
+                  className="cursor-pointer relative inline-block mb-4"
+                  onHoverStart={() => setIsHovering(true)}
+                  onHoverEnd={() => setIsHovering(false)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleBuyPack}
+                >
                   <PackSprite
                     type="sports"
                     size="lg"
                     glowing={isHovering}
                   />
-                </Link>
-              </motion.div>
+                  {/* Buy New Pack tag */}
+                  <motion.div
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-game-gold text-black px-3 py-1 rounded-full text-sm font-bold shadow-lg whitespace-nowrap"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    Buy New Pack
+                  </motion.div>
+                </motion.div>
 
-              <motion.p
-                className="mt-6 text-lg font-bold"
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                <p className="text-sm text-gray-400 mt-4">
+                  Come back next Monday for free packs!
+                </p>
+              </>
+            )}
+
+            {/* Active Packs Preview */}
+            {hasActivePacks && (
+              <div className="mt-8">
+                <p className="text-sm text-gray-400 mb-3">
+                  Games in progress
+                  {pendingReveals > 0 && (
+                    <span className="text-game-gold font-bold ml-2">
+                      • {pendingReveals} ready!
+                    </span>
+                  )}
+                </p>
+
+                <div className="space-y-2 mb-4">
+                  {previewPacks.map((pack, index) => (
+                    <PackListItem key={pack.id} pack={pack} index={index} />
+                  ))}
+                </div>
+
+                {remainingActivePacks > 0 && (
+                  <Link
+                    href="/my-packs"
+                    className="btn-pixel inline-block"
+                  >
+                    View More ({remainingActivePacks} more)
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* Link to pack history if no active packs but has opened some */}
+            {!hasActivePacks && packSummaries.length > 0 && (
+              <Link
+                href="/my-packs"
+                className="mt-8 text-sm text-gray-400 hover:text-white inline-block"
               >
-                Tap to Open
-              </motion.p>
-
-              <p className="mt-2 text-xs text-gray-500">
-                5 events • Make your picks • Win USD
-              </p>
-            </div>
-          )}
+                View pack history →
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Quick Stats */}

@@ -19,7 +19,7 @@ import {
 } from '@/lib/rarity';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
 
-type Phase = 'opening' | 'revealing' | 'swiping' | 'confirming';
+type Phase = 'checking' | 'opening' | 'revealing' | 'swiping' | 'confirming' | 'blocked';
 
 interface PickedEvent {
   event: Event;
@@ -29,7 +29,7 @@ interface PickedEvent {
 export default function PackOpeningPage({ params }: { params: { type: string } }) {
   const { type } = params;
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>('opening');
+  const [phase, setPhase] = useState<Phase>('checking');
   const [revealedCards, setRevealedCards] = useState<number[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pickedEvents, setPickedEvents] = useState<PickedEvent[]>([]);
@@ -49,6 +49,39 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   const addPack = useMyPacksStore((state) => state.addPack);
   const markPackSynced = useMyPacksStore((state) => state.markPackSynced);
   const anonymousId = useSessionStore((state) => state.anonymousId);
+  const isProfileSynced = useSessionStore((state) => state.isProfileSynced);
+
+  // Check if user can open a pack
+  useEffect(() => {
+    async function checkAvailability() {
+      if (!anonymousId || !isProfileSynced) return;
+
+      try {
+        const response = await fetch(
+          `/api/packs/availability?anonymousId=${encodeURIComponent(anonymousId)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (data.canOpenPack) {
+            setPhase('opening');
+          } else {
+            setPhase('blocked');
+          }
+        } else {
+          // If API fails, allow opening (local-first)
+          setPhase('opening');
+        }
+      } catch (error) {
+        console.error('Error checking pack availability:', error);
+        // If API fails, allow opening (local-first)
+        setPhase('opening');
+      }
+    }
+
+    if (phase === 'checking') {
+      checkAvailability();
+    }
+  }, [anonymousId, isProfileSynced, phase]);
 
   // Initialize pack with mock events
   useEffect(() => {
@@ -277,6 +310,54 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   return (
     <main className="min-h-screen min-h-dvh bg-game-bg flex flex-col overflow-hidden">
       <AnimatePresence mode="wait">
+        {/* Checking Phase */}
+        {phase === 'checking' && (
+          <motion.div
+            key="checking"
+            className="flex-1 flex flex-col items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="w-12 h-12 border-4 border-game-accent border-t-transparent rounded-full animate-spin" />
+            <p className="mt-4 text-sm text-gray-400">Checking availability...</p>
+          </motion.div>
+        )}
+
+        {/* Blocked Phase - Weekly Limit Reached */}
+        {phase === 'blocked' && (
+          <motion.div
+            key="blocked"
+            className="flex-1 flex flex-col items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="text-center max-w-sm">
+              <div className="text-6xl mb-6">⏳</div>
+              <h2 className="text-2xl font-bold mb-4">Weekly Limit Reached</h2>
+              <p className="text-gray-400 mb-6">
+                You&apos;ve opened all your free packs this week.
+                <br />
+                Come back next Monday for more!
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push('/')}
+                  className="w-full btn-pixel"
+                >
+                  Back to Home
+                </button>
+                <button
+                  onClick={() => router.push('/my-packs')}
+                  className="w-full btn-pixel-secondary"
+                >
+                  View My Packs
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Opening Phase */}
         {phase === 'opening' && (
           <motion.div
