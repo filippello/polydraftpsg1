@@ -7,12 +7,18 @@
 
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
-// Dynamic import to avoid build failure when file doesn't exist in production
-async function loadSeedData(): Promise<InputData | null> {
+// Load seed data at runtime using fs (not available in production)
+function loadSeedData(): InputData | null {
   try {
-    const data = await import('../../../../../input/json/sports_week_3.json');
-    return data.default as InputData;
+    const filePath = join(process.cwd(), 'input', 'json', 'sports_week_3.json');
+    if (!existsSync(filePath)) {
+      return null;
+    }
+    const content = readFileSync(filePath, 'utf-8');
+    return JSON.parse(content) as InputData;
   } catch {
     return null;
   }
@@ -66,7 +72,7 @@ function getSubcategoryFromSport(sport: string, slug: string): string {
 }
 
 export async function POST() {
-  const data = await loadSeedData();
+  const data = loadSeedData();
 
   if (!data) {
     return NextResponse.json(
@@ -170,7 +176,7 @@ export async function POST() {
 }
 
 export async function GET() {
-  const data = await loadSeedData();
+  const data = loadSeedData();
 
   if (!data) {
     return NextResponse.json({
