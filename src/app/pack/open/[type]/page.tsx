@@ -277,6 +277,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                     >
                       <span className="text-xl">
                         {event.subcategory === 'nba' ? '🏀' :
+                         event.subcategory === 'nhl' ? '🏒' :
                          event.subcategory === 'nfl' ? '🏈' :
                          event.subcategory === 'epl' ? '⚽' :
                          event.subcategory === 'f1' ? '🏎️' :

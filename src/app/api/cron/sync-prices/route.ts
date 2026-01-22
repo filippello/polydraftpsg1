@@ -67,7 +67,7 @@ async function syncEventPrice(event: Event): Promise<{ success: boolean; error?:
 
       const probA = prices.find((p) => p.outcome === 'a')?.price ?? event.outcome_a_probability;
       const probB = prices.find((p) => p.outcome === 'b')?.price ?? event.outcome_b_probability;
-      const probDraw = prices.find((p) => p.outcome === 'draw')?.price;
+      const probDraw = prices.find((p) => p.outcome === 'draw')?.price ?? undefined;
 
       await updateEventProbabilities(event.id, probA, probB, probDraw);
 

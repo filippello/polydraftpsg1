@@ -34,3 +34,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# input files (uploaded to Supabase Storage)
+/input/
+
+# remotion output
+/out/
