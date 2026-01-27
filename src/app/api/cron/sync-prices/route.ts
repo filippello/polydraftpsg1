@@ -18,7 +18,7 @@ import {
   getEventTokens,
   updateTokenPrice,
 } from '@/lib/supabase/events';
-import { fetchMarket, fetchPrice } from '@/lib/polymarket/client';
+import { fetchMarket, fetchPrice, parseOutcomePrices } from '@/lib/polymarket/client';
 import type { Event } from '@/types';
 
 // Verify cron secret for security
@@ -82,7 +82,7 @@ async function syncEventPrice(event: Event): Promise<{ success: boolean; error?:
     }
 
     // Parse prices from market data
-    const prices = market.outcomePrices.map((p) => parseFloat(p));
+    const prices = parseOutcomePrices(market.outcomePrices);
     const probA = prices[0] ?? 0.5;
     const probB = prices[1] ?? 0.5;
 

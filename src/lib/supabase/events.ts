@@ -270,77 +270,29 @@ export async function completeSyncLog(
 }
 
 // ============================================
-// Resolution Queue
+// Resolution - Direct Query
 // ============================================
 
 /**
- * Get events pending resolution check
+ * Get active events that need resolution check
+ * Directly queries events table for status='active' with polymarket_market_id
  */
 export async function getEventsToResolve(): Promise<Event[]> {
   const supabase = createServiceClient();
 
   const { data, error } = await supabase
-    .from('resolution_queue')
-    .select('event_id, events(*)')
-    .lte('next_check_at', new Date().toISOString())
-    .order('priority', { ascending: false })
+    .from('events')
+    .select('*')
+    .eq('status', 'active')
+    .not('polymarket_market_id', 'is', null)
     .limit(20);
 
   if (error) {
-    console.error('Error fetching resolution queue:', error);
+    console.error('Error fetching events to resolve:', error);
     return [];
   }
 
-  return data?.map((row) => row.events as unknown as Event).filter(Boolean) ?? [];
-}
-
-/**
- * Update resolution queue entry after check
- */
-export async function updateResolutionQueueEntry(
-  eventId: string,
-  resolved: boolean
-): Promise<boolean> {
-  const supabase = createServiceClient();
-
-  if (resolved) {
-    // Remove from queue if resolved
-    const { error } = await supabase
-      .from('resolution_queue')
-      .delete()
-      .eq('event_id', eventId);
-
-    if (error) {
-      console.error('Error removing from resolution queue:', error);
-      return false;
-    }
-  } else {
-    // Update check count and schedule next check (exponential backoff)
-    const { data: current } = await supabase
-      .from('resolution_queue')
-      .select('check_count')
-      .eq('event_id', eventId)
-      .single();
-
-    const checkCount = (current?.check_count ?? 0) + 1;
-    const nextCheckMinutes = Math.min(60 * Math.pow(2, checkCount - 1), 1440); // Max 24 hours
-
-    const { error } = await supabase
-      .from('resolution_queue')
-      .update({
-        check_count: checkCount,
-        last_check_at: new Date().toISOString(),
-        next_check_at: new Date(Date.now() + nextCheckMinutes * 60 * 1000).toISOString(),
-      })
-      .eq('event_id', eventId);
-
-    if (error) {
-      console.error('Error updating resolution queue:', error);
-      return false;
-    }
-  }
-
-  return true;
+  return data ?? [];
 }
 
 // ============================================

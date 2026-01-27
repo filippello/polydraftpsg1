@@ -18,7 +18,7 @@ export interface GammaMarket {
   slug: string;
   conditionId: string;
   outcomes: string[];
-  outcomePrices: string[];
+  outcomePrices: string[] | string; // Can be array or JSON string
   volume: string;
   active: boolean;
   closed: boolean;
@@ -194,6 +194,30 @@ export async function fetchMidpoint(tokenId: string): Promise<number | null> {
 }
 
 // ============================================
+// Utility Functions
+// ============================================
+
+/**
+ * Parse outcomePrices which can be an array or a JSON string
+ */
+export function parseOutcomePrices(outcomePrices: string[] | string | undefined): number[] {
+  if (!outcomePrices) return [0.5, 0.5];
+
+  let parsed = outcomePrices;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [0.5, 0.5];
+    }
+  }
+
+  if (!Array.isArray(parsed)) return [0.5, 0.5];
+
+  return parsed.map((p) => parseFloat(String(p)));
+}
+
+// ============================================
 // Resolution Logic
 // ============================================
 
@@ -213,7 +237,7 @@ export async function checkResolution(marketId: string): Promise<ResolutionResul
   }
 
   // Parse outcome prices - winning outcome has price = 1 (or very close to it)
-  const prices = market.outcomePrices.map((p) => parseFloat(p));
+  const prices = parseOutcomePrices(market.outcomePrices);
 
   // Find the winning outcome (price closest to 1)
   const outcomeAPrice = prices[0] ?? 0;
@@ -252,15 +276,11 @@ export async function checkResolution(marketId: string): Promise<ResolutionResul
   return { resolved: false };
 }
 
-// ============================================
-// Utility Functions
-// ============================================
-
 /**
  * Transform Polymarket market to our Event format
  */
 export function transformMarketToEvent(market: GammaMarket) {
-  const prices = market.outcomePrices.map((p) => parseFloat(p));
+  const prices = parseOutcomePrices(market.outcomePrices);
   const probA = prices[0] ?? 0.5;
   const probB = prices[1] ?? 1 - probA;
   const probDraw = prices[2]; // May be undefined for binary markets
@@ -338,7 +358,8 @@ export function isValidMarket(market: GammaMarket): boolean {
   if (market.archived) return false;
 
   // Must have prices for all outcomes
-  if (!market.outcomePrices || market.outcomePrices.length < market.outcomes.length) return false;
+  const prices = parseOutcomePrices(market.outcomePrices);
+  if (prices.length < market.outcomes.length) return false;
 
   return true;
 }
