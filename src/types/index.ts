@@ -20,9 +20,24 @@ export type EventStatus = 'upcoming' | 'active' | 'pending_resolution' | 'resolv
 export type Outcome = 'a' | 'b' | 'draw';
 export type EventCategory = 'sports' | 'politics' | 'crypto' | 'economy' | 'entertainment';
 
+/** Supported prediction market venues */
+export type Venue = 'polymarket' | 'jupiter' | string;
+
 export interface Event {
   id: string;
-  polymarket_market_id: string;
+
+  // =====================================
+  // Venue Identification (new, venue-agnostic)
+  // =====================================
+  venue: Venue;
+  venue_event_id?: string;
+  venue_slug?: string;
+
+  // =====================================
+  // Legacy Polymarket fields (now optional)
+  // Kept for backward compatibility
+  // =====================================
+  polymarket_market_id?: string;
   polymarket_condition_id?: string;
   polymarket_slug?: string;
   polymarket_id?: string;  // ID interno de Polymarket
@@ -244,7 +259,7 @@ export interface AnonymousSession {
 }
 
 // ============================================
-// Polymarket Token
+// Polymarket Token (Legacy)
 // ============================================
 
 export interface PolymarketToken {
@@ -253,6 +268,22 @@ export interface PolymarketToken {
   outcome: Outcome;
   outcome_label?: string;  // Original label from Polymarket (e.g., "Arsenal", "Man United")
   token_id: string;
+  last_price?: number;
+  last_updated_at?: string;
+  created_at: string;
+}
+
+// ============================================
+// Venue Token (Multi-venue)
+// ============================================
+
+export interface VenueToken {
+  id: string;
+  event_id: string;
+  venue: Venue;
+  outcome: Outcome;
+  outcome_label?: string;
+  venue_token_id: string;
   last_price?: number;
   last_updated_at?: string;
   created_at: string;

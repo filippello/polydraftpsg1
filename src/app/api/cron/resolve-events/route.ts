@@ -6,14 +6,14 @@
  *
  * Flow:
  * 1. Update events that have started to 'active' status
- * 2. Get events with status='active' and polymarket_market_id
- * 3. For each event, call Polymarket API to check resolution
+ * 2. Get events with status='active' that have venue market IDs
+ * 3. For each event, use the appropriate venue adapter to check resolution
  * 4. If resolved:
  *    - Update events table (status='resolved', winning_outcome)
  *    - Resolve all picks for that event
  *    - Recalculate pack totals
  *
- * Vercel Cron: Set up in vercel.json with schedule "0/5 * * * *"
+ * Vercel Cron: Set up in vercel.json with schedule "0 0 * * *" (daily)
  *
  * Security: Protected by CRON_SECRET header
  */
@@ -29,7 +29,7 @@ import {
   resolvePicksForEvent,
   updateActiveEvents,
 } from '@/lib/supabase/resolution';
-import { checkResolution } from '@/lib/polymarket/client';
+import { venueRegistry } from '@/lib/adapters';
 import type { Event } from '@/types';
 
 // Verify cron secret for security
@@ -53,12 +53,14 @@ function verifyCronSecret(request: Request): boolean {
 
 interface ResolutionError {
   event_id: string;
+  venue?: string;
   error: string;
 }
 
 interface ResolutionResult {
   event_id: string;
   title: string;
+  venue: string;
   resolved: boolean;
   winning_outcome?: string;
   picks_resolved?: number;
@@ -66,7 +68,15 @@ interface ResolutionResult {
 }
 
 /**
- * Process a single event for resolution
+ * Get the market ID for an event (venue-agnostic)
+ */
+function getMarketId(event: Event): string | null {
+  // Prefer new venue_event_id, fallback to legacy polymarket_market_id
+  return event.venue_event_id ?? event.polymarket_market_id ?? null;
+}
+
+/**
+ * Process a single event for resolution using the venue adapter
  */
 async function processEventResolution(event: Event): Promise<{
   success: boolean;
@@ -75,12 +85,21 @@ async function processEventResolution(event: Event): Promise<{
   error?: string;
 }> {
   try {
-    if (!event.polymarket_market_id) {
-      return { success: false, resolved: false, error: 'No polymarket_market_id' };
+    const marketId = getMarketId(event);
+    if (!marketId) {
+      return { success: false, resolved: false, error: 'No market ID available' };
     }
 
-    // Check resolution status from Polymarket API
-    const resolution = await checkResolution(event.polymarket_market_id);
+    // Get the appropriate adapter for this event's venue
+    const venue = event.venue ?? 'polymarket';
+    const adapter = venueRegistry.getOrNull(venue);
+
+    if (!adapter) {
+      return { success: false, resolved: false, error: `No adapter for venue: ${venue}` };
+    }
+
+    // Check resolution status using the venue adapter
+    const resolution = await adapter.checkResolution(marketId);
 
     if (!resolution.resolved) {
       // Not resolved yet
@@ -92,7 +111,7 @@ async function processEventResolution(event: Event): Promise<{
     }
 
     // Event is resolved! Update everything
-    console.log(`Event resolved: ${event.title} - Winner: ${resolution.winningOutcome}`);
+    console.log(`[${venue}] Event resolved: ${event.title} - Winner: ${resolution.winningOutcome}`);
 
     // 1. Update the event in the database
     const eventUpdated = await resolveEvent(event.id, resolution.winningOutcome);
@@ -109,6 +128,7 @@ async function processEventResolution(event: Event): Promise<{
       result: {
         event_id: event.id,
         title: event.title,
+        venue,
         resolved: true,
         winning_outcome: resolution.winningOutcome,
         picks_resolved: stats.picksResolved,
@@ -162,7 +182,13 @@ export async function GET(request: Request) {
       });
     }
 
-    console.log(`Checking ${events.length} events for resolution`);
+    // Log venue distribution
+    const venueDistribution = events.reduce((acc, e) => {
+      const v = e.venue ?? 'polymarket';
+      acc[v] = (acc[v] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`Checking ${events.length} events for resolution:`, venueDistribution);
 
     // Step 3: Process each event
     const BATCH_SIZE = 5; // Process in smaller batches to avoid timeouts
@@ -186,6 +212,7 @@ export async function GET(request: Request) {
         } else {
           errors.push({
             event_id: event.id,
+            venue: event.venue ?? 'polymarket',
             error: result.error ?? 'Unknown error',
           });
         }
@@ -203,6 +230,7 @@ export async function GET(request: Request) {
       resolved: resolved.length,
       activated: activatedCount,
       failed: errors.length,
+      venues: venueDistribution,
       results: resolved.length > 0 ? resolved : undefined,
       errors: errors.length > 0 ? errors : undefined,
       duration_ms: Date.now() - startTime,

@@ -1,10 +1,10 @@
 /**
- * Cron Job: Sync Prices from Polymarket
+ * Cron Job: Sync Prices from Venues
  *
  * This endpoint should be called periodically (e.g., every 5 minutes)
- * to sync event prices from Polymarket.
+ * to sync event prices from prediction market venues.
  *
- * Vercel Cron: Set up in vercel.json with schedule "0/5 * * * *"
+ * Vercel Cron: Set up in vercel.json with schedule "0 0 * * *" (daily)
  *
  * Security: Protected by CRON_SECRET header
  */
@@ -18,7 +18,7 @@ import {
   getEventTokens,
   updateTokenPrice,
 } from '@/lib/supabase/events';
-import { fetchMarket, fetchPrice, parseOutcomePrices } from '@/lib/polymarket/client';
+import { venueRegistry } from '@/lib/adapters';
 import type { Event } from '@/types';
 
 // Verify cron secret for security
@@ -42,22 +42,37 @@ function verifyCronSecret(request: Request): boolean {
 
 interface SyncError {
   event_id: string;
+  venue?: string;
   error: string;
 }
 
 /**
- * Sync prices for a single event
+ * Get the market ID for an event (venue-agnostic)
+ */
+function getMarketId(event: Event): string | null {
+  return event.venue_event_id ?? event.polymarket_market_id ?? null;
+}
+
+/**
+ * Sync prices for a single event using the venue adapter
  */
 async function syncEventPrice(event: Event): Promise<{ success: boolean; error?: string }> {
   try {
+    const venue = event.venue ?? 'polymarket';
+    const adapter = venueRegistry.getOrNull(venue);
+
+    if (!adapter) {
+      return { success: false, error: `No adapter for venue: ${venue}` };
+    }
+
     // Try to get prices from tokens first (more efficient)
     const tokens = await getEventTokens(event.id);
 
     if (tokens.length > 0) {
-      // Fetch prices directly from CLOB API using token IDs
+      // Fetch prices directly using token IDs
       const pricePromises = tokens.map(async (token) => {
-        const price = await fetchPrice(token.token_id);
-        if (price !== null) {
+        const price = await adapter.fetchTokenPrice?.(token.token_id);
+        if (price !== null && price !== undefined) {
           await updateTokenPrice(token.token_id, price);
         }
         return { outcome: token.outcome, price };
@@ -74,20 +89,21 @@ async function syncEventPrice(event: Event): Promise<{ success: boolean; error?:
       return { success: true };
     }
 
-    // Fallback: Fetch from Gamma API
-    const market = await fetchMarket(event.polymarket_market_id);
+    // Fallback: Fetch from venue API
+    const marketId = getMarketId(event);
+    if (!marketId) {
+      return { success: false, error: 'No market ID available' };
+    }
+
+    const market = await adapter.fetchMarket(marketId);
 
     if (!market) {
       return { success: false, error: 'Market not found' };
     }
 
-    // Parse prices from market data
-    const prices = parseOutcomePrices(market.outcomePrices);
-    const probA = prices[0] ?? 0.5;
-    const probB = prices[1] ?? 0.5;
-
-    // For 3-outcome markets (draw support)
-    const probDraw = event.supports_draw && prices.length > 2 ? prices[2] : undefined;
+    const probA = market.outcomeAProbability;
+    const probB = market.outcomeBProbability;
+    const probDraw = market.supportsDraw ? market.outcomeDrawProbability : undefined;
 
     await updateEventProbabilities(event.id, probA, probB, probDraw);
 
@@ -129,6 +145,14 @@ export async function GET(request: Request) {
       });
     }
 
+    // Log venue distribution
+    const venueDistribution = events.reduce((acc, e) => {
+      const v = e.venue ?? 'polymarket';
+      acc[v] = (acc[v] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`Syncing prices for ${events.length} events:`, venueDistribution);
+
     // Sync prices in parallel (with concurrency limit)
     const BATCH_SIZE = 10;
     for (let i = 0; i < events.length; i += BATCH_SIZE) {
@@ -147,6 +171,7 @@ export async function GET(request: Request) {
         } else {
           errors.push({
             event_id: event.id,
+            venue: event.venue ?? 'polymarket',
             error: result.error ?? 'Unknown error',
           });
         }
@@ -162,6 +187,7 @@ export async function GET(request: Request) {
       success: errors.length === 0,
       synced: syncedCount,
       failed: errors.length,
+      venues: venueDistribution,
       errors: errors.length > 0 ? errors : undefined,
       duration_ms: Date.now() - startTime,
     });

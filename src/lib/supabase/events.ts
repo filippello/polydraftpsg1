@@ -32,18 +32,29 @@ export async function getActiveEvents(): Promise<Event[]> {
 }
 
 /**
- * Fetch events that need price sync (active with polymarket_market_id)
+ * Fetch events that need price sync (active with venue market ID)
+ * Now venue-aware: checks both new venue_event_id and legacy polymarket_market_id
  */
-export async function getEventsForPriceSync(): Promise<Event[]> {
+export async function getEventsForPriceSync(venue?: string): Promise<Event[]> {
   const supabase = createServiceClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('events')
     .select('*')
     .in('status', ['upcoming', 'active'])
-    .not('polymarket_market_id', 'is', null)
     .order('last_price_sync_at', { ascending: true, nullsFirst: true })
     .limit(50);
+
+  // Filter by venue if specified
+  if (venue) {
+    query = query.eq('venue', venue);
+  }
+
+  // Require at least one market ID (new or legacy)
+  // Use or filter to check both columns
+  query = query.or('venue_event_id.not.is.null,polymarket_market_id.not.is.null');
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching events for price sync:', error);
@@ -275,17 +286,26 @@ export async function completeSyncLog(
 
 /**
  * Get active events that need resolution check
- * Directly queries events table for status='active' with polymarket_market_id
+ * Now venue-aware: checks both new venue_event_id and legacy polymarket_market_id
  */
-export async function getEventsToResolve(): Promise<Event[]> {
+export async function getEventsToResolve(venue?: string): Promise<Event[]> {
   const supabase = createServiceClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('events')
     .select('*')
     .eq('status', 'active')
-    .not('polymarket_market_id', 'is', null)
     .limit(20);
+
+  // Filter by venue if specified
+  if (venue) {
+    query = query.eq('venue', venue);
+  }
+
+  // Require at least one market ID (new or legacy)
+  query = query.or('venue_event_id.not.is.null,polymarket_market_id.not.is.null');
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching events to resolve:', error);
