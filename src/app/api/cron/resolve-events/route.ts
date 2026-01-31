@@ -30,6 +30,7 @@ import {
   updateActiveEvents,
 } from '@/lib/supabase/resolution';
 import { venueRegistry } from '@/lib/adapters';
+import { getActiveVenueId } from '@/lib/adapters/config';
 import type { Event } from '@/types';
 
 // Verify cron secret for security
@@ -166,7 +167,11 @@ export async function GET(request: Request) {
     }
 
     // Step 2: Get active events that need resolution check
-    const events = await getEventsToResolve();
+    const allEvents = await getEventsToResolve();
+
+    // Filter to only process events from the active venue
+    const activeVenue = getActiveVenueId();
+    const events = allEvents.filter(e => (e.venue ?? 'polymarket') === activeVenue);
 
     if (events.length === 0) {
       if (logId) {

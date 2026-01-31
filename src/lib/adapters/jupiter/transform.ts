@@ -1,57 +1,67 @@
 /**
- * Jupiter Transformers
+ * Jupiter/Kalshi Transformers
  *
- * Functions to transform Jupiter-specific data formats
+ * Functions to transform Kalshi-specific data formats
  * into the common VenueMarket format.
  */
 
 import type { Event, EventCategory, Outcome } from '@/types';
 import type { VenueMarket, VenueOutcome, VenueResolution } from '../types';
-import type { JupiterMarket, JupiterEvent } from './types';
+import type { KalshiMarket } from './types';
+import {
+  getYesProbability,
+  getNoProbability,
+  isMarketOpen,
+  isMarketResolved,
+} from './api';
 
 // ============================================
 // Market Transformation
 // ============================================
 
 /**
- * Transform a JupiterMarket to VenueMarket format
+ * Transform a KalshiMarket to VenueMarket format
  */
-export function transformJupiterToVenueMarket(market: JupiterMarket): VenueMarket {
-  // Parse outcome prices
-  const yesOutcome = market.outcomes.find((o) => o.name.toLowerCase() === 'yes');
-  const noOutcome = market.outcomes.find((o) => o.name.toLowerCase() === 'no');
+export function transformKalshiToVenueMarket(market: KalshiMarket): VenueMarket {
+  const probYes = getYesProbability(market);
+  const probNo = getNoProbability(market);
 
-  const probYes = yesOutcome ? parseFloat(yesOutcome.price) : 0.5;
-  const probNo = noOutcome ? parseFloat(noOutcome.price) : 1 - probYes;
+  // For Kalshi, yes_sub_title is the "Yes" outcome label
+  // The "No" outcome is the opposite (not the same label)
+  const yesLabel = market.yes_sub_title ?? 'Yes';
+  // If no_sub_title is the same as yes_sub_title, use "No" instead
+  const noLabel = (market.no_sub_title && market.no_sub_title !== yesLabel)
+    ? market.no_sub_title
+    : 'No';
 
-  // Build outcomes array
+  // Build outcomes array (Kalshi markets are binary: YES/NO)
   const outcomes: VenueOutcome[] = [
     {
-      label: yesOutcome?.name ?? 'Yes',
-      tokenId: yesOutcome?.tokenMint,
+      label: yesLabel,
+      tokenId: `${market.ticker}-yes`,
       price: probYes,
       position: 'a',
     },
     {
-      label: noOutcome?.name ?? 'No',
-      tokenId: noOutcome?.tokenMint,
+      label: noLabel,
+      tokenId: `${market.ticker}-no`,
       price: probNo,
       position: 'b',
     },
   ];
 
-  // Jupiter markets are binary (no draw support)
+  // Kalshi markets are always binary (no draw support)
   const supportsDraw = false;
 
   return {
     venueId: 'jupiter',
-    venueMarketId: market.id,
-    venueSlug: market.id, // Jupiter uses IDs, may need slug generation
-    venueConditionId: market.marketPubkey,
+    venueMarketId: market.ticker,
+    venueSlug: market.ticker.toLowerCase(),
+    venueConditionId: market.event_ticker,
 
-    title: market.question,
-    description: market.description,
-    imageUrl: market.imageUrl,
+    title: market.title ?? market.subtitle ?? market.ticker,
+    description: market.rules_primary,
+    imageUrl: undefined, // Kalshi doesn't provide images in API
 
     outcomes,
     supportsDraw,
@@ -59,27 +69,17 @@ export function transformJupiterToVenueMarket(market: JupiterMarket): VenueMarke
     outcomeAProbability: probYes,
     outcomeBProbability: probNo,
 
-    isActive: market.status === 'open' || market.status === 'locked',
-    isClosed: market.status === 'resolved' || market.status === 'cancelled',
-    isArchived: market.status === 'cancelled',
+    isActive: isMarketOpen(market),
+    isClosed: isMarketResolved(market) || market.status === 'closed',
+    isArchived: market.status === 'settled',
 
-    endDate: market.lockedAt,
-    volume: parseFloat(market.volume) || undefined,
+    startDate: market.open_time,
+    endDate: market.close_time ?? market.expiration_time,
+    volume: market.volume,
 
-    category: categorizeJupiterMarket(market),
+    category: categorizeKalshiMarket(market),
+    tags: market.tags,
   };
-}
-
-/**
- * Transform a JupiterEvent (with markets) to VenueMarkets
- */
-export function transformJupiterEventToVenueMarkets(event: JupiterEvent): VenueMarket[] {
-  return event.markets.map((market) => ({
-    ...transformJupiterToVenueMarket(market),
-    // Inherit event-level metadata
-    imageUrl: market.imageUrl ?? event.imageUrl,
-    category: categorizeJupiterMarket(market) ?? categorizeJupiterEvent(event),
-  }));
 }
 
 /**
@@ -99,13 +99,13 @@ export function transformVenueMarketToEvent(market: VenueMarket): Partial<Event>
     description: market.description,
     image_url: market.imageUrl,
 
-    // Outcomes (map to Yes/No for Jupiter)
+    // Outcomes (YES/NO for Kalshi)
     outcome_a_label: market.outcomes[0]?.label ?? 'Yes',
     outcome_b_label: market.outcomes[1]?.label ?? 'No',
     outcome_a_probability: market.outcomeAProbability,
     outcome_b_probability: market.outcomeBProbability,
 
-    // No draw support for Jupiter
+    // No draw support for Kalshi
     supports_draw: false,
 
     // Status
@@ -118,6 +118,7 @@ export function transformVenueMarketToEvent(market: VenueMarket): Partial<Event>
     // Metadata
     category: market.category,
     volume: market.volume,
+    event_start_at: market.startDate,
     resolution_deadline_at: market.endDate,
   };
 }
@@ -127,27 +128,27 @@ export function transformVenueMarketToEvent(market: VenueMarket): Partial<Event>
 // ============================================
 
 /**
- * Determine resolution from Jupiter market data
+ * Determine resolution from Kalshi market data
  */
-export function determineResolution(market: JupiterMarket): VenueResolution {
+export function determineResolution(market: KalshiMarket): VenueResolution {
   // Market not resolved
-  if (market.status !== 'resolved') {
+  if (!isMarketResolved(market)) {
     return { resolved: false };
   }
 
-  // No resolution value
-  if (market.resolution === null || market.resolution === undefined) {
+  // Check result field
+  if (!market.result || market.result === 'void') {
     return { resolved: false };
   }
 
   // Determine winning outcome
-  const winningOutcome: Outcome = market.resolution === 'yes' ? 'a' : 'b';
+  const winningOutcome: Outcome = market.result === 'yes' ? 'a' : 'b';
 
   return {
     resolved: true,
     winningOutcome,
     winningPrice: 1.0,
-    resolvedAt: market.resolvedAt,
+    resolvedAt: market.settlement_time,
   };
 }
 
@@ -156,71 +157,57 @@ export function determineResolution(market: JupiterMarket): VenueResolution {
 // ============================================
 
 /**
- * Categorize a Jupiter market based on question/description
+ * Categorize a Kalshi market based on ticker/title
  */
-export function categorizeJupiterMarket(market: JupiterMarket): EventCategory {
-  const question = market.question.toLowerCase();
-
-  // Crypto keywords (common on Jupiter/Solana)
-  const cryptoKeywords = [
-    'bitcoin', 'ethereum', 'solana', 'crypto', 'btc', 'eth', 'sol',
-    'token', 'defi', 'nft', 'price', 'market cap', 'ath', 'atl',
-  ];
-  if (cryptoKeywords.some((kw) => question.includes(kw))) {
-    return 'crypto';
-  }
+export function categorizeKalshiMarket(market: KalshiMarket): EventCategory {
+  const title = (market.title ?? '').toLowerCase();
+  const ticker = market.ticker.toLowerCase();
+  const eventTicker = (market.event_ticker ?? '').toLowerCase();
+  const category = (market.category ?? '').toLowerCase();
 
   // Sports keywords
   const sportsKeywords = [
-    'nba', 'nfl', 'mlb', 'soccer', 'football', 'basketball',
-    'win', 'championship', 'game', 'match', 'team',
+    'nba', 'nfl', 'mlb', 'nhl', 'soccer', 'football', 'basketball',
+    'f1', 'formula', 'race', 'grand prix', 'championship', 'super bowl',
+    'world series', 'playoffs', 'win', 'game', 'match', 'team',
   ];
-  if (sportsKeywords.some((kw) => question.includes(kw))) {
+  if (sportsKeywords.some((kw) => title.includes(kw) || ticker.includes(kw) || eventTicker.includes(kw))) {
     return 'sports';
   }
+  if (category.includes('sport')) return 'sports';
 
   // Politics keywords
   const politicsKeywords = [
     'election', 'president', 'senate', 'congress', 'vote', 'poll',
-    'government', 'policy', 'bill', 'law',
+    'democrat', 'republican', 'governor', 'mayor', 'biden', 'trump',
   ];
-  if (politicsKeywords.some((kw) => question.includes(kw))) {
+  if (politicsKeywords.some((kw) => title.includes(kw) || ticker.includes(kw))) {
     return 'politics';
   }
+  if (category.includes('politic')) return 'politics';
+
+  // Crypto keywords
+  const cryptoKeywords = [
+    'bitcoin', 'ethereum', 'crypto', 'btc', 'eth', 'sol', 'solana',
+    'token', 'blockchain', 'defi',
+  ];
+  if (cryptoKeywords.some((kw) => title.includes(kw) || ticker.includes(kw))) {
+    return 'crypto';
+  }
+  if (category.includes('crypto')) return 'crypto';
 
   // Economy keywords
   const economyKeywords = [
     'fed', 'interest rate', 'gdp', 'inflation', 'unemployment',
-    'stock', 'index', 'dow', 'nasdaq', 's&p',
+    'stock', 'index', 'dow', 'nasdaq', 's&p', 'fomc', 'recession',
+    'cpi', 'jobs', 'economic',
   ];
-  if (economyKeywords.some((kw) => question.includes(kw))) {
+  if (economyKeywords.some((kw) => title.includes(kw) || ticker.includes(kw))) {
     return 'economy';
   }
+  if (category.includes('econom') || category.includes('financ')) return 'economy';
 
   // Default to entertainment
-  return 'entertainment';
-}
-
-/**
- * Categorize a Jupiter event
- */
-export function categorizeJupiterEvent(event: JupiterEvent): EventCategory {
-  if (event.category) {
-    const category = event.category.toLowerCase();
-    if (category.includes('crypto') || category.includes('defi')) return 'crypto';
-    if (category.includes('sport')) return 'sports';
-    if (category.includes('politic')) return 'politics';
-    if (category.includes('econom')) return 'economy';
-  }
-
-  // Use tags if available
-  if (event.tags) {
-    const tags = event.tags.map((t) => t.toLowerCase());
-    if (tags.some((t) => t.includes('crypto'))) return 'crypto';
-    if (tags.some((t) => t.includes('sport'))) return 'sports';
-    if (tags.some((t) => t.includes('politic'))) return 'politics';
-  }
-
   return 'entertainment';
 }
 
@@ -229,24 +216,38 @@ export function categorizeJupiterEvent(event: JupiterEvent): EventCategory {
 // ============================================
 
 /**
- * Check if a Jupiter market is valid for our game
+ * Check if a Kalshi market is valid for our game
  */
-export function isValidJupiterMarket(market: JupiterMarket): boolean {
-  // Must have exactly 2 outcomes (binary market)
-  if (market.outcomes.length !== 2) return false;
+export function isValidKalshiMarket(market: KalshiMarket): boolean {
+  // Must be a binary market
+  if (market.market_type !== 'binary') return false;
 
-  // Must not be cancelled
-  if (market.status === 'cancelled') return false;
+  // Must have a ticker
+  if (!market.ticker) return false;
 
-  // Must have valid prices
-  const prices = market.outcomes.map((o) => parseFloat(o.price));
-  if (prices.some((p) => isNaN(p) || p < 0 || p > 1)) return false;
+  // Must not be void/cancelled
+  if (market.result === 'void') return false;
 
-  // Prices should sum to approximately 1
-  const sum = prices.reduce((a, b) => a + b, 0);
-  if (sum < 0.9 || sum > 1.1) return false;
+  // Must have valid probabilities (implied from prices)
+  const probYes = getYesProbability(market);
+  if (isNaN(probYes) || probYes < 0 || probYes > 1) return false;
 
   return true;
+}
+
+/**
+ * Check if a Kalshi market has real liquidity
+ */
+export function hasLiquidity(market: KalshiMarket): boolean {
+  return (market.last_price ?? 0) > 0 ||
+    ((market.yes_bid ?? 0) > 0 && (market.yes_ask ?? 100) < 100);
+}
+
+/**
+ * Check if a market is a multivariate (MVE) parlay market
+ */
+export function isMVEMarket(market: KalshiMarket): boolean {
+  return market.ticker.includes('MVE');
 }
 
 // ============================================
@@ -254,21 +255,22 @@ export function isValidJupiterMarket(market: JupiterMarket): boolean {
 // ============================================
 
 /**
- * Extract token mappings from a Jupiter market
+ * Extract token mappings from a Kalshi market
+ * Note: Kalshi doesn't have actual tokens, we create synthetic IDs
  */
 export function extractTokenMappings(
-  market: JupiterMarket
+  market: KalshiMarket
 ): Array<{ outcome: Outcome; outcomeLabel: string; tokenId: string }> {
-  const mappings: Array<{ outcome: Outcome; outcomeLabel: string; tokenId: string }> = [];
-
-  for (const outcome of market.outcomes) {
-    const position: Outcome = outcome.name.toLowerCase() === 'yes' ? 'a' : 'b';
-    mappings.push({
-      outcome: position,
-      outcomeLabel: outcome.name,
-      tokenId: outcome.tokenMint,
-    });
-  }
-
-  return mappings;
+  return [
+    {
+      outcome: 'a',
+      outcomeLabel: market.yes_sub_title ?? 'Yes',
+      tokenId: `${market.ticker}-yes`,
+    },
+    {
+      outcome: 'b',
+      outcomeLabel: market.no_sub_title ?? 'No',
+      tokenId: `${market.ticker}-no`,
+    },
+  ];
 }

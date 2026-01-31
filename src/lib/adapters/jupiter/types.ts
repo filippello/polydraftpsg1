@@ -1,118 +1,137 @@
 /**
- * Jupiter Predictions API Types
+ * Jupiter/Kalshi Predictions API Types
  *
- * Types for Jupiter's prediction market API on Solana.
- * Note: These types are based on expected API structure and may need
- * adjustment once the actual API is integrated.
+ * Jupiter Predictions uses Kalshi for liquidity and market data.
+ * These types map to the Kalshi Trade API v2.
  */
 
 // ============================================
-// Jupiter API Response Types
+// Kalshi API Response Types
 // ============================================
 
 /**
- * Jupiter Event (top-level container for markets)
+ * Kalshi Market status values
  */
-export interface JupiterEvent {
-  id: string;
-  name: string;
-  description?: string;
-  imageUrl?: string;
+export type KalshiMarketStatus =
+  | 'initialized'
+  | 'inactive'
+  | 'active'
+  | 'open'
+  | 'paused'
+  | 'closed'
+  | 'determined'
+  | 'disputed'
+  | 'amended'
+  | 'finalized'
+  | 'settled';
+
+/**
+ * Kalshi Market from API
+ * Based on https://docs.kalshi.com/api-reference/market/get-market
+ */
+export interface KalshiMarket {
+  // Identifiers
+  ticker: string;
+  event_ticker: string;
+  series_ticker?: string;
+
+  // Market info
+  market_type: 'binary' | 'scalar';
+  title?: string;
+  subtitle?: string;
+  yes_sub_title?: string;
+  no_sub_title?: string;
+
+  // Status
+  status: KalshiMarketStatus;
+  result?: 'yes' | 'no' | 'void';
+
+  // Pricing (in dollars, fixed-point with 4 decimals)
+  // e.g., "0.6500" means $0.65 or 65% probability
+  yes_bid?: number;
+  yes_ask?: number;
+  no_bid?: number;
+  no_ask?: number;
+  last_price?: number;
+
+  // Volume & Liquidity
+  volume?: number;
+  volume_24h?: number;
+  open_interest?: number;
+  liquidity?: number;
+
+  // Notional value (payout per contract)
+  notional_value?: number;
+
+  // Timestamps (ISO 8601)
+  created_time?: string;
+  updated_time?: string;
+  open_time?: string;
+  close_time?: string;
+  expiration_time?: string;
+  latest_expiration_time?: string;
+  settlement_time?: string;
+
+  // Rules
+  rules_primary?: string;
+  rules_secondary?: string;
+
+  // Category/tags
   category?: string;
   tags?: string[];
-  status: 'active' | 'settled' | 'cancelled';
-  startTime?: string;
-  endTime?: string;
-  markets: JupiterMarket[];
+
+  // Floor/cap for pricing
+  floor_strike?: number;
+  cap_strike?: number;
 }
 
 /**
- * Jupiter Market (individual prediction market within an event)
+ * Kalshi Event (container for related markets)
  */
-export interface JupiterMarket {
-  id: string;
-  eventId: string;
-  question: string;
-  description?: string;
-  imageUrl?: string;
-
-  // Market status
-  status: 'open' | 'locked' | 'resolved' | 'cancelled';
-  resolution?: 'yes' | 'no' | null;
-
-  // Outcomes (typically YES/NO for binary markets)
-  outcomes: JupiterOutcome[];
-
-  // Liquidity and volume
-  liquidity: string;
-  volume: string;
-
-  // Timestamps
-  createdAt: string;
-  lockedAt?: string;
-  resolvedAt?: string;
-
-  // Solana-specific
-  marketPubkey: string;
-  ammPubkey?: string;
+export interface KalshiEvent {
+  event_ticker: string;
+  series_ticker?: string;
+  title: string;
+  subtitle?: string;
+  category?: string;
+  mutually_exclusive: boolean;
+  markets: KalshiMarket[];
 }
 
 /**
- * Jupiter Outcome (YES/NO position in a market)
+ * Kalshi Markets List Response
  */
-export interface JupiterOutcome {
-  id: string;
-  marketId: string;
-  name: string;
-  price: string; // 0-1 as string
-  tokenMint: string; // Solana token mint address
+export interface KalshiMarketsResponse {
+  markets: KalshiMarket[];
+  cursor?: string;
 }
 
 /**
- * Jupiter Price Quote Response
+ * Kalshi Events List Response
  */
-export interface JupiterPriceQuote {
-  marketId: string;
-  outcomes: Array<{
-    name: string;
-    price: string;
-    tokenMint: string;
-  }>;
-  timestamp: string;
+export interface KalshiEventsResponse {
+  events: KalshiEvent[];
+  cursor?: string;
 }
 
 /**
- * Jupiter Markets List Response
+ * Kalshi Single Market Response
  */
-export interface JupiterMarketsResponse {
-  markets: JupiterMarket[];
-  pagination?: {
-    total: number;
-    offset: number;
-    limit: number;
-  };
-}
-
-/**
- * Jupiter Events List Response
- */
-export interface JupiterEventsResponse {
-  events: JupiterEvent[];
-  pagination?: {
-    total: number;
-    offset: number;
-    limit: number;
-  };
+export interface KalshiMarketResponse {
+  market: KalshiMarket;
 }
 
 // ============================================
 // Fetch Parameters
 // ============================================
 
-export interface JupiterFetchMarketsParams {
-  status?: 'open' | 'locked' | 'resolved' | 'cancelled';
-  category?: string;
+export interface KalshiFetchMarketsParams {
   limit?: number;
-  offset?: number;
-  search?: string;
+  cursor?: string;
+  event_ticker?: string;
+  series_ticker?: string;
+  status?: 'unopened' | 'open' | 'paused' | 'closed' | 'settled';
+  tickers?: string;
+  min_close_ts?: number;
+  max_close_ts?: number;
 }

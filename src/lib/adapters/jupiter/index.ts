@@ -1,9 +1,8 @@
 /**
  * Jupiter Adapter
  *
- * Implements VenueAdapter for Jupiter prediction markets on Solana.
- * Note: This adapter is disabled by default until the Jupiter Predictions
- * API integration is complete.
+ * Implements VenueAdapter for Jupiter Predictions (powered by Kalshi).
+ * Uses the Kalshi Trade API v2 for market data.
  */
 
 import type { Event } from '@/types';
@@ -17,16 +16,16 @@ import type {
 import { venueRegistry } from '../registry';
 import { isVenueEnabled } from '../config';
 import {
-  fetchJupiterMarkets,
-  fetchJupiterMarket,
-  searchJupiterMarkets,
-  fetchJupiterTokenPrice,
+  fetchKalshiMarkets,
+  fetchKalshiMarket,
+  searchKalshiMarkets,
+  getYesProbability,
 } from './api';
 import {
-  transformJupiterToVenueMarket,
+  transformKalshiToVenueMarket,
   transformVenueMarketToEvent,
   determineResolution,
-  isValidJupiterMarket,
+  isValidKalshiMarket,
 } from './transform';
 
 // ============================================
@@ -42,35 +41,41 @@ export class JupiterAdapter implements VenueAdapter {
   // =====================================
 
   async fetchMarkets(params: FetchMarketsParams): Promise<VenueMarket[]> {
-    const markets = await fetchJupiterMarkets({
-      status: params.active ? 'open' : undefined,
-      category: params.category,
+    // Map our params to Kalshi params
+    const kalshiParams: Parameters<typeof fetchKalshiMarkets>[0] = {
       limit: params.limit,
-      offset: params.offset,
-      search: params.search,
-    });
+    };
+
+    // Map active/closed to Kalshi status
+    if (params.active === true) {
+      kalshiParams.status = 'open';
+    } else if (params.closed === true) {
+      kalshiParams.status = 'settled';
+    }
+
+    const markets = await fetchKalshiMarkets(kalshiParams);
 
     return markets
-      .filter(isValidJupiterMarket)
-      .map(transformJupiterToVenueMarket);
+      .filter(isValidKalshiMarket)
+      .map(transformKalshiToVenueMarket);
   }
 
   async fetchMarket(marketId: string): Promise<VenueMarket | null> {
-    const market = await fetchJupiterMarket(marketId);
+    const market = await fetchKalshiMarket(marketId);
     if (!market) return null;
 
-    if (!isValidJupiterMarket(market)) {
+    if (!isValidKalshiMarket(market)) {
       return null;
     }
 
-    return transformJupiterToVenueMarket(market);
+    return transformKalshiToVenueMarket(market);
   }
 
   async searchMarkets(query: string, limit: number = 20): Promise<VenueMarket[]> {
-    const markets = await searchJupiterMarkets(query, limit);
+    const markets = await searchKalshiMarkets(query, limit);
     return markets
-      .filter(isValidJupiterMarket)
-      .map(transformJupiterToVenueMarket);
+      .filter(isValidKalshiMarket)
+      .map(transformKalshiToVenueMarket);
   }
 
   // =====================================
@@ -78,31 +83,47 @@ export class JupiterAdapter implements VenueAdapter {
   // =====================================
 
   async fetchPrices(tokenIds: string[]): Promise<VenuePriceUpdate[]> {
-    const prices = await Promise.all(
-      tokenIds.map(async (tokenId) => {
-        const price = await fetchJupiterTokenPrice(tokenId);
-        return { tokenId, price };
-      })
-    );
+    // Kalshi doesn't have separate token prices - prices come from market data
+    // Extract market ticker from token ID (format: "TICKER-yes" or "TICKER-no")
+    const tickerSet = new Set<string>();
+    for (const tokenId of tokenIds) {
+      const ticker = tokenId.replace(/-yes$|-no$/, '');
+      tickerSet.add(ticker);
+    }
 
-    const tokenPrices = prices
-      .filter((p) => p.price !== null)
-      .map((p) => ({
-        tokenId: p.tokenId,
-        price: p.price!,
-      }));
+    const updates: VenuePriceUpdate[] = [];
+    const tickers = Array.from(tickerSet);
 
-    return [{
-      venueMarketId: '',
-      outcomeAProbability: 0,
-      outcomeBProbability: 0,
-      tokenPrices,
-      timestamp: new Date().toISOString(),
-    }];
+    for (const ticker of tickers) {
+      const market = await fetchKalshiMarket(ticker);
+      if (market) {
+        const probYes = getYesProbability(market);
+        updates.push({
+          venueMarketId: ticker,
+          outcomeAProbability: probYes,
+          outcomeBProbability: 1 - probYes,
+          tokenPrices: [
+            { tokenId: `${ticker}-yes`, price: probYes },
+            { tokenId: `${ticker}-no`, price: 1 - probYes },
+          ],
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
+    return updates;
   }
 
   async fetchTokenPrice(tokenId: string): Promise<number | null> {
-    return fetchJupiterTokenPrice(tokenId);
+    // Extract ticker and side from token ID
+    const isYes = tokenId.endsWith('-yes');
+    const ticker = tokenId.replace(/-yes$|-no$/, '');
+
+    const market = await fetchKalshiMarket(ticker);
+    if (!market) return null;
+
+    const probYes = getYesProbability(market);
+    return isYes ? probYes : 1 - probYes;
   }
 
   // =====================================
@@ -110,7 +131,7 @@ export class JupiterAdapter implements VenueAdapter {
   // =====================================
 
   async checkResolution(marketId: string): Promise<VenueResolution> {
-    const market = await fetchJupiterMarket(marketId);
+    const market = await fetchKalshiMarket(marketId);
 
     if (!market) {
       return { resolved: false };
@@ -160,8 +181,6 @@ export const jupiterAdapter = new JupiterAdapter();
 if (isVenueEnabled('jupiter')) {
   venueRegistry.register(jupiterAdapter);
   console.log('[Jupiter] Adapter registered');
-} else {
-  console.log('[Jupiter] Adapter not registered (disabled in config)');
 }
 
 // ============================================
@@ -182,15 +201,19 @@ export function registerJupiterAdapter(): void {
 // Re-exports
 // ============================================
 
-export type { JupiterMarket, JupiterEvent, JupiterOutcome } from './types';
+export type { KalshiMarket, KalshiEvent, KalshiMarketStatus } from './types';
 export {
-  fetchJupiterMarkets,
-  fetchJupiterMarket,
-  searchJupiterMarkets,
-  fetchJupiterTokenPrice,
+  fetchKalshiMarkets,
+  fetchKalshiMarket,
+  searchKalshiMarkets,
+  getYesProbability,
+  getNoProbability,
+  isMarketOpen,
+  isMarketResolved,
 } from './api';
 export {
-  transformJupiterToVenueMarket,
+  transformKalshiToVenueMarket,
   determineResolution as checkResolution,
-  isValidJupiterMarket as isValidMarket,
+  isValidKalshiMarket as isValidMarket,
+  categorizeKalshiMarket,
 } from './transform';

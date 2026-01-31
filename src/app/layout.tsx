@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Press_Start_2P, VT323 } from "next/font/google";
 import { Providers } from "@/components/Providers";
+import { getActiveVenue } from "@/lib/adapters/config";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -44,9 +45,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const venue = getActiveVenue();
+  const themeStyle = {
+    '--venue-accent': venue.theme.accentColor,
+    '--venue-bg': venue.theme.backgroundColor || '#1a1a2e',
+  } as React.CSSProperties;
+
   return (
     <html lang="en" className="dark">
-      <body className={`${jetbrainsMono.variable} ${pressStart2P.variable} ${vt323.variable} font-mono antialiased bg-game-bg text-foreground`}>
+      <body
+        className={`${jetbrainsMono.variable} ${pressStart2P.variable} ${vt323.variable} font-mono antialiased bg-game-bg text-foreground`}
+        style={themeStyle}
+      >
         <Providers>
           {/* Balatro post-processing effects wrapper */}
           <div className="min-h-screen min-h-dvh flex flex-col balatro-noise balatro-vignette balatro-scanlines">

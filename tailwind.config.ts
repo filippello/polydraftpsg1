@@ -12,6 +12,11 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        // Venue-aware colors (CSS variables set by layout)
+        venue: {
+          accent: "var(--venue-accent)",
+          bg: "var(--venue-bg)",
+        },
         // Primary game colors
         game: {
           bg: "#1a1a2e",

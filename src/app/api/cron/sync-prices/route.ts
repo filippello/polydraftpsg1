@@ -19,6 +19,7 @@ import {
   updateTokenPrice,
 } from '@/lib/supabase/events';
 import { venueRegistry } from '@/lib/adapters';
+import { getActiveVenueId } from '@/lib/adapters/config';
 import type { Event } from '@/types';
 
 // Verify cron secret for security
@@ -131,7 +132,11 @@ export async function GET(request: Request) {
 
   try {
     // Get events that need price sync
-    const events = await getEventsForPriceSync();
+    const allEvents = await getEventsForPriceSync();
+
+    // Filter to only process events from the active venue
+    const activeVenue = getActiveVenueId();
+    const events = allEvents.filter(e => (e.venue ?? 'polymarket') === activeVenue);
 
     if (events.length === 0) {
       if (logId) {

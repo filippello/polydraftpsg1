@@ -14,6 +14,7 @@ import type {
   FetchMarketsParams,
 } from '../types';
 import { venueRegistry } from '../registry';
+import { isVenueEnabled } from '../config';
 import {
   fetchGammaMarkets,
   fetchGammaMarket,
@@ -149,10 +150,14 @@ export class PolymarketAdapter implements VenueAdapter {
 export const polymarketAdapter = new PolymarketAdapter();
 
 // ============================================
-// Auto-register with registry
+// Conditional Registration
 // ============================================
 
-venueRegistry.register(polymarketAdapter);
+// Only register if Polymarket is the active venue
+if (isVenueEnabled('polymarket')) {
+  venueRegistry.register(polymarketAdapter);
+  console.log('[Polymarket] Adapter registered');
+}
 
 // ============================================
 // Re-exports for backward compatibility

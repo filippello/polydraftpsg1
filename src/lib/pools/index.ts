@@ -6,9 +6,11 @@ import {
   getFallbackRarities,
   distanceToRarityBin,
 } from '@/lib/rarity';
+import { getActiveVenueId } from '@/lib/adapters/config';
 
-// Import pool data
-import sportsPool from '@/../data/pools/sports.json';
+// Import pool data for each venue
+import polymarketSportsPool from '@/../data/pools/polymarket/sports.json';
+import jupiterSportsPool from '@/../data/pools/jupiter/sports.json';
 
 export interface EventPool {
   id: string;
@@ -18,16 +20,22 @@ export interface EventPool {
   events: Event[];
 }
 
-// Pool registry - maps pack types to their pools
-const POOL_REGISTRY: Record<string, EventPool> = {
-  sports: sportsPool as EventPool,
+// Pool registry - maps venues to their pack type pools
+const VENUE_POOLS: Record<string, Record<string, EventPool>> = {
+  polymarket: {
+    sports: polymarketSportsPool as EventPool,
+  },
+  jupiter: {
+    sports: jupiterSportsPool as EventPool,
+  },
 };
 
 /**
- * Get the event pool for a specific pack type
+ * Get the event pool for a specific pack type (from active venue)
  */
 export function getPool(packType: string): EventPool | null {
-  return POOL_REGISTRY[packType] || null;
+  const venueId = getActiveVenueId();
+  return VENUE_POOLS[venueId]?.[packType] || null;
 }
 
 /**

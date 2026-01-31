@@ -6,10 +6,10 @@
  */
 
 import type { VenueAdapter, VenueId } from './types';
+import { getActiveVenueId } from './config';
 
 class VenueAdapterRegistry {
   private adapters: Map<VenueId, VenueAdapter> = new Map();
-  private defaultVenueId: VenueId = 'polymarket';
 
   /**
    * Register an adapter for a venue
@@ -62,27 +62,17 @@ class VenueAdapterRegistry {
   }
 
   /**
-   * Get the default venue adapter
+   * Get the default venue adapter (the active venue)
    */
   getDefault(): VenueAdapter {
-    return this.get(this.defaultVenueId);
+    return this.get(getActiveVenueId());
   }
 
   /**
-   * Set the default venue ID
-   */
-  setDefaultVenueId(venueId: VenueId): void {
-    if (!this.adapters.has(venueId)) {
-      throw new Error(`Cannot set default to unregistered venue: ${venueId}`);
-    }
-    this.defaultVenueId = venueId;
-  }
-
-  /**
-   * Get the default venue ID
+   * Get the default venue ID (the active venue)
    */
   getDefaultVenueId(): VenueId {
-    return this.defaultVenueId;
+    return getActiveVenueId();
   }
 
   /**

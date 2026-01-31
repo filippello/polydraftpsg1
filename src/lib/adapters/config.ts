@@ -8,6 +8,12 @@
 import type { VenueId } from './types';
 
 // ============================================
+// Active Venue (from environment)
+// ============================================
+
+const ACTIVE_VENUE_ID = (process.env.NEXT_PUBLIC_VENUE || 'polymarket') as VenueId;
+
+// ============================================
 // Venue Config Interface
 // ============================================
 
@@ -104,7 +110,7 @@ export const venueConfigs: Record<string, VenueConfig> = {
   jupiter: {
     venueId: 'jupiter',
     displayName: 'Jupiter',
-    description: 'Prediction markets on Solana',
+    description: 'Prediction markets powered by Kalshi',
 
     rules: {
       picksPerPack: 5,
@@ -113,7 +119,7 @@ export const venueConfigs: Record<string, VenueConfig> = {
     },
 
     features: {
-      walletRequired: true,
+      walletRequired: false, // Using Kalshi API directly
       showOrderbook: false,
       instantExecution: true,
       supportsPartialSell: false,
@@ -126,13 +132,35 @@ export const venueConfigs: Record<string, VenueConfig> = {
     },
 
     api: {
-      baseUrl: 'https://predictions.jup.ag',
-      rateLimit: 30,
+      baseUrl: 'https://api.elections.kalshi.com/trade-api/v2',
+      rateLimit: 60,
     },
 
-    enabled: false, // Disabled until implementation complete
+    enabled: true, // Enabled - using Kalshi API
   },
 };
+
+// ============================================
+// Active Venue Helpers
+// ============================================
+
+/**
+ * Get the active venue ID from environment
+ */
+export function getActiveVenueId(): VenueId {
+  if (!venueConfigs[ACTIVE_VENUE_ID]) {
+    console.warn(`Invalid NEXT_PUBLIC_VENUE: ${ACTIVE_VENUE_ID}, defaulting to polymarket`);
+    return 'polymarket';
+  }
+  return ACTIVE_VENUE_ID;
+}
+
+/**
+ * Get the active venue config
+ */
+export function getActiveVenue(): VenueConfig {
+  return venueConfigs[getActiveVenueId()];
+}
 
 // ============================================
 // Config Helpers
@@ -153,10 +181,10 @@ export function getEnabledVenues(): VenueConfig[] {
 }
 
 /**
- * Check if a venue is enabled
+ * Check if a venue is enabled (only active venue is enabled)
  */
 export function isVenueEnabled(venueId: VenueId): boolean {
-  return venueConfigs[venueId]?.enabled ?? false;
+  return venueId === getActiveVenueId();
 }
 
 /**

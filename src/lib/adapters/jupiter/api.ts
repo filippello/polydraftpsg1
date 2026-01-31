@@ -1,237 +1,250 @@
 /**
- * Jupiter Predictions API Client
+ * Jupiter/Kalshi Predictions API Client
  *
- * Low-level API functions for Jupiter's prediction market API on Solana.
- * Note: API endpoints are placeholders and should be updated with actual
- * Jupiter Predictions API when available.
+ * Jupiter Predictions uses Kalshi for liquidity and market data.
+ * This client interfaces with the Kalshi Trade API v2.
+ *
+ * API Docs: https://docs.kalshi.com/welcome
  */
 
 import type {
-  JupiterMarket,
-  JupiterEvent,
-  JupiterPriceQuote,
-  JupiterMarketsResponse,
-  JupiterEventsResponse,
-  JupiterFetchMarketsParams,
+  KalshiMarket,
+  KalshiMarketsResponse,
+  KalshiMarketResponse,
+  KalshiFetchMarketsParams,
+  KalshiMarketStatus,
 } from './types';
 
 // ============================================
 // API Configuration
 // ============================================
 
-// Jupiter Predictions API base URL (placeholder - update when available)
-const JUPITER_API_BASE = process.env.JUPITER_API_BASE ?? 'https://predictions.jup.ag/api/v1';
-
-// ============================================
-// Events API
-// ============================================
-
-/**
- * Fetch all events from Jupiter
- */
-export async function fetchJupiterEvents(params: {
-  status?: string;
-  category?: string;
-  limit?: number;
-  offset?: number;
-}): Promise<JupiterEvent[]> {
-  const searchParams = new URLSearchParams();
-
-  if (params.status) searchParams.set('status', params.status);
-  if (params.category) searchParams.set('category', params.category);
-  if (params.limit) searchParams.set('limit', String(params.limit));
-  if (params.offset) searchParams.set('offset', String(params.offset));
-
-  try {
-    const response = await fetch(`${JUPITER_API_BASE}/events?${searchParams}`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-      next: { revalidate: 60 },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Jupiter API error: ${response.status}`);
-    }
-
-    const data: JupiterEventsResponse = await response.json();
-    return data.events ?? [];
-  } catch (error) {
-    console.error('[Jupiter] Error fetching events:', error);
-    return [];
-  }
-}
-
-/**
- * Fetch a single event by ID
- */
-export async function fetchJupiterEvent(eventId: string): Promise<JupiterEvent | null> {
-  try {
-    const response = await fetch(`${JUPITER_API_BASE}/events/${eventId}`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-      next: { revalidate: 30 },
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      throw new Error(`Jupiter API error: ${response.status}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('[Jupiter] Error fetching event:', error);
-    return null;
-  }
-}
+// Kalshi API base URL (used by Jupiter Predictions)
+const KALSHI_API_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
 
 // ============================================
 // Markets API
 // ============================================
 
 /**
- * Fetch markets from Jupiter
+ * Fetch markets from Kalshi API
  */
-export async function fetchJupiterMarkets(params: JupiterFetchMarketsParams): Promise<JupiterMarket[]> {
+export async function fetchKalshiMarkets(
+  params: KalshiFetchMarketsParams = {}
+): Promise<KalshiMarket[]> {
   const searchParams = new URLSearchParams();
 
-  if (params.status) searchParams.set('status', params.status);
-  if (params.category) searchParams.set('category', params.category);
   if (params.limit) searchParams.set('limit', String(params.limit));
-  if (params.offset) searchParams.set('offset', String(params.offset));
-  if (params.search) searchParams.set('search', params.search);
+  if (params.cursor) searchParams.set('cursor', params.cursor);
+  if (params.event_ticker) searchParams.set('event_ticker', params.event_ticker);
+  if (params.series_ticker) searchParams.set('series_ticker', params.series_ticker);
+  if (params.status) searchParams.set('status', params.status);
+  if (params.tickers) searchParams.set('tickers', params.tickers);
+  if (params.min_close_ts) searchParams.set('min_close_ts', String(params.min_close_ts));
+  if (params.max_close_ts) searchParams.set('max_close_ts', String(params.max_close_ts));
 
   try {
-    const response = await fetch(`${JUPITER_API_BASE}/markets?${searchParams}`, {
+    const url = `${KALSHI_API_BASE}/markets?${searchParams}`;
+    const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
       },
-      next: { revalidate: 60 },
+      next: { revalidate: 60 }, // Cache for 1 minute
     });
 
     if (!response.ok) {
-      throw new Error(`Jupiter API error: ${response.status}`);
+      throw new Error(`Kalshi API error: ${response.status}`);
     }
 
-    const data: JupiterMarketsResponse = await response.json();
+    const data: KalshiMarketsResponse = await response.json();
     return data.markets ?? [];
   } catch (error) {
-    console.error('[Jupiter] Error fetching markets:', error);
+    console.error('[Jupiter/Kalshi] Error fetching markets:', error);
     return [];
   }
 }
 
 /**
- * Fetch a single market by ID
+ * Fetch a single market by ticker
  */
-export async function fetchJupiterMarket(marketId: string): Promise<JupiterMarket | null> {
+export async function fetchKalshiMarket(ticker: string): Promise<KalshiMarket | null> {
   try {
-    const response = await fetch(`${JUPITER_API_BASE}/markets/${marketId}`, {
+    const response = await fetch(`${KALSHI_API_BASE}/markets/${ticker}`, {
       headers: {
         'Accept': 'application/json',
       },
-      next: { revalidate: 30 },
+      next: { revalidate: 30 }, // Cache for 30 seconds
     });
 
     if (!response.ok) {
       if (response.status === 404) return null;
-      throw new Error(`Jupiter API error: ${response.status}`);
+      throw new Error(`Kalshi API error: ${response.status}`);
     }
 
-    return response.json();
+    const data: KalshiMarketResponse = await response.json();
+    return data.market ?? null;
   } catch (error) {
-    console.error('[Jupiter] Error fetching market:', error);
+    console.error('[Jupiter/Kalshi] Error fetching market:', error);
     return null;
   }
 }
 
 /**
- * Search markets by query
+ * Search markets by fetching and filtering
+ * Note: Kalshi doesn't have a search endpoint, so we fetch and filter client-side
  */
-export async function searchJupiterMarkets(
+export async function searchKalshiMarkets(
   query: string,
   limit: number = 20
-): Promise<JupiterMarket[]> {
-  return fetchJupiterMarkets({ search: query, limit });
+): Promise<KalshiMarket[]> {
+  // Fetch open markets
+  const markets = await fetchKalshiMarkets({ status: 'open', limit: 200 });
+
+  // Filter by query (case-insensitive search in title/subtitle)
+  const queryLower = query.toLowerCase();
+  const filtered = markets.filter((m) => {
+    const title = (m.title ?? '').toLowerCase();
+    const subtitle = (m.subtitle ?? '').toLowerCase();
+    const ticker = m.ticker.toLowerCase();
+    return title.includes(queryLower) || subtitle.includes(queryLower) || ticker.includes(queryLower);
+  });
+
+  return filtered.slice(0, limit);
 }
 
-// ============================================
-// Prices API
-// ============================================
-
 /**
- * Fetch current prices for a market
+ * Fetch all markets for pagination
  */
-export async function fetchJupiterPrices(marketId: string): Promise<JupiterPriceQuote | null> {
-  try {
-    const response = await fetch(`${JUPITER_API_BASE}/markets/${marketId}/prices`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-      next: { revalidate: 10 },
-    });
+export async function fetchAllKalshiMarkets(
+  params: KalshiFetchMarketsParams = {},
+  maxPages: number = 5
+): Promise<KalshiMarket[]> {
+  const allMarkets: KalshiMarket[] = [];
+  let cursor: string | undefined = params.cursor;
+  let pages = 0;
 
-    if (!response.ok) {
-      throw new Error(`Jupiter API error: ${response.status}`);
+  while (pages < maxPages) {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.set('limit', String(params.limit ?? 100));
+    if (cursor) searchParams.set('cursor', cursor);
+    if (params.status) searchParams.set('status', params.status);
+
+    try {
+      const response = await fetch(`${KALSHI_API_BASE}/markets?${searchParams}`, {
+        headers: { 'Accept': 'application/json' },
+        next: { revalidate: 60 },
+      });
+
+      if (!response.ok) break;
+
+      const data: KalshiMarketsResponse = await response.json();
+      allMarkets.push(...(data.markets ?? []));
+
+      if (!data.cursor) break;
+      cursor = data.cursor;
+      pages++;
+    } catch {
+      break;
     }
-
-    return response.json();
-  } catch (error) {
-    console.error('[Jupiter] Error fetching prices:', error);
-    return null;
   }
-}
 
-/**
- * Fetch price for a specific token mint
- */
-export async function fetchJupiterTokenPrice(tokenMint: string): Promise<number | null> {
-  try {
-    const response = await fetch(`${JUPITER_API_BASE}/tokens/${tokenMint}/price`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-      next: { revalidate: 10 },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Jupiter API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return parseFloat(data.price);
-  } catch (error) {
-    console.error('[Jupiter] Error fetching token price:', error);
-    return null;
-  }
+  return allMarkets;
 }
 
 // ============================================
-// Utility Functions
+// Price Utilities
 // ============================================
 
 /**
- * Parse Jupiter status to our status format
+ * Convert Kalshi price (in cents, 0-100) to probability (0-1)
+ * Kalshi API returns prices in cents, e.g., 65 = 65 cents = 65%
  */
-export function parseJupiterStatus(status: JupiterMarket['status']): string {
+export function kalshiPriceToProbability(priceCents: number | undefined): number {
+  if (priceCents === undefined || priceCents === null) return 0.5;
+  // Convert cents (0-100) to probability (0-1)
+  const prob = priceCents / 100;
+  return Math.min(Math.max(prob, 0), 1);
+}
+
+/**
+ * Get YES probability from market
+ */
+export function getYesProbability(market: KalshiMarket): number {
+  // Use last_price if available and non-zero, otherwise midpoint of bid/ask
+  if (market.last_price !== undefined && market.last_price > 0) {
+    return kalshiPriceToProbability(market.last_price);
+  }
+
+  // Use midpoint of bid/ask
+  const yesBid = market.yes_bid ?? 0;
+  const yesAsk = market.yes_ask ?? 100;
+
+  // If no liquidity, use 50%
+  if (yesBid === 0 && yesAsk >= 100) {
+    return 0.5;
+  }
+
+  const midpoint = (yesBid + yesAsk) / 2;
+  return kalshiPriceToProbability(midpoint);
+}
+
+/**
+ * Get NO probability from market
+ */
+export function getNoProbability(market: KalshiMarket): number {
+  return 1 - getYesProbability(market);
+}
+
+// ============================================
+// Status Utilities
+// ============================================
+
+/**
+ * Check if market is open for trading
+ */
+export function isMarketOpen(market: KalshiMarket): boolean {
+  return market.status === 'open' || market.status === 'active';
+}
+
+/**
+ * Check if market is resolved
+ */
+export function isMarketResolved(market: KalshiMarket): boolean {
+  return (
+    market.status === 'determined' ||
+    market.status === 'settled' ||
+    market.status === 'finalized'
+  );
+}
+
+/**
+ * Check if market is closed (no longer trading but not resolved)
+ */
+export function isMarketClosed(market: KalshiMarket): boolean {
+  return market.status === 'closed' || market.status === 'paused';
+}
+
+/**
+ * Map Kalshi status to our EventStatus
+ */
+export function mapKalshiStatus(status: KalshiMarketStatus): string {
   switch (status) {
+    case 'initialized':
+    case 'inactive':
+      return 'upcoming';
     case 'open':
+    case 'active':
       return 'active';
-    case 'locked':
-      return 'active';
-    case 'resolved':
+    case 'paused':
+    case 'closed':
+      return 'pending_resolution';
+    case 'determined':
+    case 'disputed':
+    case 'amended':
+    case 'finalized':
+    case 'settled':
       return 'resolved';
-    case 'cancelled':
-      return 'cancelled';
     default:
       return 'upcoming';
   }
-}
-
-/**
- * Check if a Jupiter market is resolved
- */
-export function isJupiterMarketResolved(market: JupiterMarket): boolean {
-  return market.status === 'resolved' && market.resolution !== null;
 }
