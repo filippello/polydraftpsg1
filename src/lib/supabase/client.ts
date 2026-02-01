@@ -2,10 +2,13 @@ import { createBrowserClient } from '@supabase/ssr';
 
 // Create a Supabase client for use in the browser
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  console.log('[Supabase Client] URL:', url ? `${url.substring(0, 30)}...` : 'MISSING');
+  console.log('[Supabase Client] Key:', key ? `${key.substring(0, 20)}...` : 'MISSING');
+
+  return createBrowserClient(url, key);
 }
 
 // Singleton instance for client-side use

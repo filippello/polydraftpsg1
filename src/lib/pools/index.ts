@@ -7,10 +7,7 @@ import {
   distanceToRarityBin,
 } from '@/lib/rarity';
 import { getActiveVenueId } from '@/lib/adapters/config';
-
-// Import pool data for each venue
-import polymarketSportsPool from '@/../data/pools/polymarket/sports.json';
-import jupiterSportsPool from '@/../data/pools/jupiter/sports.json';
+import { createClient } from '@/lib/supabase/client';
 
 export interface EventPool {
   id: string;
@@ -20,22 +17,138 @@ export interface EventPool {
   events: Event[];
 }
 
-// Pool registry - maps venues to their pack type pools
-const VENUE_POOLS: Record<string, Record<string, EventPool>> = {
-  polymarket: {
-    sports: polymarketSportsPool as EventPool,
-  },
-  jupiter: {
-    sports: jupiterSportsPool as EventPool,
-  },
-};
+export interface DBPool {
+  id: string;
+  slug: string;
+  name: string;
+  venue: string;
+  pack_type: string;
+  period: string | null;
+  min_events_required: number;
+  is_active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBEvent {
+  id: string;
+  title: string;
+  category: string;
+  subcategory: string | null;
+  outcome_a_label: string;
+  outcome_b_label: string;
+  outcome_a_probability: number;
+  outcome_b_probability: number;
+  outcome_draw_label: string | null;
+  outcome_draw_probability: number | null;
+  supports_draw: boolean;
+  status: string;
+  event_start_at: string | null;
+  resolution_deadline_at: string | null;
+  polymarket_slug: string | null;
+  polymarket_market_id: string | null;
+  polymarket_id: string | null;
+  volume: number | null;
+  venue: string | null;
+  venue_event_id: string | null;
+  venue_slug: string | null;
+  pool_id: string | null;
+  period: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get the event pool from database for a specific venue and pack type
+ */
+async function getPoolFromDB(venue: string, packType: string): Promise<EventPool | null> {
+  const supabase = createClient();
+
+  console.log('[getPoolFromDB] Fetching pool for:', { venue, packType });
+
+  // Get active pool for venue/pack_type
+  const { data: pool, error: poolError } = await supabase
+    .from('pools')
+    .select('*')
+    .eq('venue', venue)
+    .eq('pack_type', packType)
+    .eq('is_active', true)
+    .single();
+
+  console.log('[getPoolFromDB] Pool result:', { pool, error: poolError?.message });
+
+  if (poolError || !pool) {
+    console.warn(`No active pool found for venue=${venue}, pack_type=${packType}`, poolError);
+    return null;
+  }
+
+  const dbPool = pool as DBPool;
+
+  // Get events in this pool with status 'upcoming'
+  console.log('[getPoolFromDB] Fetching events for pool_id:', dbPool.id);
+
+  const { data: events, error: eventsError } = await supabase
+    .from('events')
+    .select('*')
+    .eq('pool_id', dbPool.id)
+    .eq('status', 'upcoming');
+
+  console.log('[getPoolFromDB] Events result:', { count: events?.length, error: eventsError?.message });
+
+  if (eventsError) {
+    console.error('Error fetching events for pool:', eventsError);
+    return null;
+  }
+
+  const dbEvents = (events || []) as DBEvent[];
+
+  // Map DB events to Event type
+  const mappedEvents: Event[] = dbEvents.map((e) => ({
+    id: e.id,
+    venue: e.venue || venue,
+    venue_event_id: e.venue_event_id || undefined,
+    venue_slug: e.venue_slug || undefined,
+    polymarket_market_id: e.polymarket_market_id || undefined,
+    polymarket_slug: e.polymarket_slug || undefined,
+    polymarket_id: e.polymarket_id || undefined,
+    volume: e.volume || undefined,
+    title: e.title,
+    category: e.category as EventCategory,
+    subcategory: e.subcategory || undefined,
+    outcome_a_label: e.outcome_a_label,
+    outcome_b_label: e.outcome_b_label,
+    outcome_a_probability: e.outcome_a_probability,
+    outcome_b_probability: e.outcome_b_probability,
+    outcome_draw_label: e.outcome_draw_label || undefined,
+    outcome_draw_probability: e.outcome_draw_probability || undefined,
+    supports_draw: e.supports_draw,
+    status: e.status as Event['status'],
+    event_start_at: e.event_start_at || undefined,
+    resolution_deadline_at: e.resolution_deadline_at || undefined,
+    is_featured: false,
+    priority_score: 0,
+    created_at: e.created_at,
+    updated_at: e.updated_at,
+  }));
+
+  return {
+    id: dbPool.slug,
+    name: dbPool.name,
+    pack_type: dbPool.pack_type,
+    min_events_required: dbPool.min_events_required,
+    events: mappedEvents,
+  };
+}
 
 /**
  * Get the event pool for a specific pack type (from active venue)
+ * Async version - reads from database
  */
-export function getPool(packType: string): EventPool | null {
+export async function getPool(packType: string): Promise<EventPool | null> {
   const venueId = getActiveVenueId();
-  return VENUE_POOLS[venueId]?.[packType] || null;
+  return getPoolFromDB(venueId, packType);
 }
 
 /**
@@ -221,9 +334,11 @@ export function selectEventsFromPoolRandom(pool: EventPool, count: number): Even
  * Get events for a pack opening
  * Main entry point for the pack opening flow
  * Uses rarity-based selection
+ *
+ * NOTE: This is now an async function that reads from the database
  */
-export function getEventsForPack(packType: string, count: number = 5): Event[] {
-  const pool = getPool(packType);
+export async function getEventsForPack(packType: string, count: number = 5): Promise<Event[]> {
+  const pool = await getPool(packType);
 
   if (!pool) {
     console.error(`No pool found for pack type: ${packType}`);
@@ -243,20 +358,20 @@ export function getEventsForPack(packType: string, count: number = 5): Event[] {
 /**
  * Check if a pack type has a valid pool
  */
-export function hasValidPool(packType: string): boolean {
-  const pool = getPool(packType);
+export async function hasValidPool(packType: string): Promise<boolean> {
+  const pool = await getPool(packType);
   return pool !== null && pool.events.length >= pool.min_events_required;
 }
 
 /**
  * Get pool statistics
  */
-export function getPoolStats(packType: string): {
+export async function getPoolStats(packType: string): Promise<{
   totalEvents: number;
   minRequired: number;
   isValid: boolean;
-} | null {
-  const pool = getPool(packType);
+} | null> {
+  const pool = await getPool(packType);
   if (!pool) return null;
 
   return {

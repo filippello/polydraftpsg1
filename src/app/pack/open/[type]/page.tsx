@@ -19,7 +19,7 @@ import {
 } from '@/lib/rarity';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
 
-type Phase = 'checking' | 'opening' | 'revealing' | 'swiping' | 'confirming' | 'blocked';
+type Phase = 'checking' | 'loading' | 'opening' | 'revealing' | 'swiping' | 'confirming' | 'blocked' | 'error';
 
 interface PickedEvent {
   event: Event;
@@ -29,21 +29,42 @@ interface PickedEvent {
 export default function PackOpeningPage({ params }: { params: { type: string } }) {
   const { type } = params;
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>('checking');
+  const [phase, setPhase] = useState<Phase>('loading');
   const [revealedCards, setRevealedCards] = useState<number[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pickedEvents, setPickedEvents] = useState<PickedEvent[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Generate stable pack ID
   const packIdRef = useRef<string>(uuidv4());
   const packId = packIdRef.current;
 
-  // Select events from pool once per session (stable across re-renders)
-  const eventsRef = useRef<Event[] | null>(null);
-  if (eventsRef.current === null) {
-    eventsRef.current = getEventsForPack(type, 5);
-  }
-  const events = eventsRef.current;
+  // Load events from pool (now async - reads from database)
+  const eventsLoadedRef = useRef(false);
+  useEffect(() => {
+    if (eventsLoadedRef.current) return;
+    eventsLoadedRef.current = true;
+
+    async function loadEvents() {
+      try {
+        const poolEvents = await getEventsForPack(type, 5);
+        if (poolEvents.length === 0) {
+          setErrorMessage('No events available in this pool. Please try again later.');
+          setPhase('error');
+          return;
+        }
+        setEvents(poolEvents);
+        setPhase('checking');
+      } catch (error) {
+        console.error('Error loading events:', error);
+        setErrorMessage('Failed to load events. Please try again.');
+        setPhase('error');
+      }
+    }
+
+    loadEvents();
+  }, [type]);
 
   const { setPack, setDraftPick } = useCurrentPackStore();
   const addPack = useMyPacksStore((state) => state.addPack);
@@ -309,6 +330,42 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   return (
     <main className="min-h-screen min-h-dvh bg-game-bg flex flex-col overflow-hidden">
       <AnimatePresence mode="wait">
+        {/* Loading Phase - Fetching events from pool */}
+        {phase === 'loading' && (
+          <motion.div
+            key="loading"
+            className="flex-1 flex flex-col items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="w-12 h-12 border-4 border-game-accent border-t-transparent rounded-full animate-spin" />
+            <p className="mt-4 text-sm text-gray-400">Loading events...</p>
+          </motion.div>
+        )}
+
+        {/* Error Phase */}
+        {phase === 'error' && (
+          <motion.div
+            key="error"
+            className="flex-1 flex flex-col items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="text-center max-w-sm">
+              <div className="text-6xl mb-6">😕</div>
+              <h2 className="text-2xl font-bold mb-4">Oops!</h2>
+              <p className="text-gray-400 mb-6">{errorMessage}</p>
+              <button
+                onClick={() => router.push('/')}
+                className="w-full btn-pixel"
+              >
+                Back to Home
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Checking Phase */}
         {phase === 'checking' && (
           <motion.div
