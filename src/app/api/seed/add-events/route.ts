@@ -15,7 +15,7 @@ import { join } from 'path';
 // Venue alias mapping
 const VENUE_ALIASES: Record<string, string> = {
   polymarket: 'poly',
-  jupiter: 'jup',
+  jupiter: 'jupi',
 };
 
 interface AddEventsRequest {
@@ -25,7 +25,8 @@ interface AddEventsRequest {
   pool_slug?: string;
 }
 
-interface InputEvent {
+// Polymarket event format
+interface PolymarketInputEvent {
   id: string;
   market_id: string;
   slug: string;
@@ -40,12 +41,37 @@ interface InputEvent {
   clob_ids: string[];
 }
 
-interface InputData {
+// Jupiter event format
+interface JupiterInputEvent {
+  id: string;
+  title: string;
+  sport: string;
+  start_time: string;
+  close_time: string;
+  status: string;
+  volume: number;
+  has_draw: boolean;
+  outcomes: string[]; // 2 or 3 (with Tie)
+  prices: number[];   // 2 or 3
+  market_ids: string[];
+}
+
+interface PolymarketInputData {
   generated_at: string;
   date_range: { start: string; end: string };
   sports: string[];
-  events: InputEvent[];
+  events: PolymarketInputEvent[];
 }
+
+interface JupiterInputData {
+  source: string;
+  generated_at: string;
+  date_range: { start: string; end: string };
+  search_terms: string[];
+  events: JupiterInputEvent[];
+}
+
+type InputData = PolymarketInputData | JupiterInputData;
 
 /**
  * Load JSON from input directory
@@ -88,6 +114,21 @@ function getSubcategoryFromSport(sport: string, slug: string): string {
     return slugMap[slugPrefix];
   }
 
+  // Direct sport mappings (for Jupiter format)
+  const sportMap: Record<string, string> = {
+    'laliga': 'laliga',
+    'premier': 'epl',
+    'nba': 'nba',
+    'nhl': 'nhl',
+    'nfl': 'nfl',
+    'mlb': 'mlb',
+    'ucl': 'ucl',
+  };
+
+  if (sportMap[sport.toLowerCase()]) {
+    return sportMap[sport.toLowerCase()];
+  }
+
   return sport.toLowerCase();
 }
 
@@ -95,7 +136,7 @@ function getSubcategoryFromSport(sport: string, slug: string): string {
  * Process Polymarket events
  */
 async function processPolymarketEvents(
-  data: InputData,
+  data: PolymarketInputData,
   poolId: string,
   poolSlug: string,
   period: string,
@@ -192,25 +233,90 @@ async function processPolymarketEvents(
 }
 
 /**
- * Process Jupiter events (placeholder for future implementation)
+ * Process Jupiter events
  */
 async function processJupiterEvents(
-  data: InputData,
+  data: JupiterInputData,
   poolId: string,
   poolSlug: string,
-  _period: string,
-  _supabase: ReturnType<typeof createServiceClient>
+  period: string,
+  supabase: ReturnType<typeof createServiceClient>
 ) {
-  // TODO: Implement Jupiter-specific processing
-  // - Use venue_event_id instead of polymarket_market_id
-  // - Different token structure (no CLOB, ticker-based)
+  const results: { success: string[]; failed: Array<{ id: string; error: string }> } = {
+    success: [],
+    failed: [],
+  };
+
+  for (const event of data.events) {
+    try {
+      const subcategory = getSubcategoryFromSport(event.sport, event.id);
+
+      // Jupiter has 2 or 3 outcomes (3rd is Tie)
+      const outcomeALabel = event.outcomes[0];
+      const outcomeBLabel = event.outcomes[1];
+      const outcomeDrawLabel = event.has_draw && event.outcomes[2] ? event.outcomes[2] : null;
+
+      const outcomAProb = event.prices[0];
+      const outcomeBProb = event.prices[1];
+      const outcomeDrawProb = event.has_draw && event.prices[2] ? event.prices[2] : null;
+
+      const eventData = {
+        // Jupiter-specific fields
+        venue: 'jupiter',
+        venue_event_id: event.id,
+        venue_slug: event.id, // Jupiter uses the same ID as slug
+
+        // Common fields
+        title: event.title,
+        category: 'sports' as const,
+        subcategory,
+        outcome_a_label: outcomeALabel,
+        outcome_b_label: outcomeBLabel,
+        outcome_a_probability: outcomAProb,
+        outcome_b_probability: outcomeBProb,
+        outcome_draw_label: outcomeDrawLabel,
+        outcome_draw_probability: outcomeDrawProb,
+        supports_draw: event.has_draw,
+        volume: event.volume,
+        event_start_at: event.start_time,
+        resolution_deadline_at: event.close_time,
+        status: 'upcoming',
+        last_price_sync_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        pool_id: poolId,
+        period: period,
+      };
+
+      const { error: eventError } = await supabase
+        .from('events')
+        .upsert(eventData, { onConflict: 'venue,venue_event_id' })
+        .select('id')
+        .single();
+
+      if (eventError) {
+        results.failed.push({ id: event.id, error: eventError.message });
+        continue;
+      }
+
+      results.success.push(event.id);
+    } catch (err) {
+      results.failed.push({
+        id: event.id,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  }
+
   return NextResponse.json({
-    message: 'Jupiter processing not yet implemented',
+    message: 'Jupiter seed completed',
     venue: 'jupiter',
     pool_id: poolId,
     pool_slug: poolSlug,
     total: data.events.length,
-  }, { status: 501 });
+    success: results.success.length,
+    failed: results.failed.length,
+    results,
+  });
 }
 
 export async function POST(request: Request) {
@@ -289,9 +395,9 @@ export async function POST(request: Request) {
 
     // Process based on venue
     if (venue === 'polymarket') {
-      return processPolymarketEvents(data, poolId, poolSlug, period, supabase);
+      return processPolymarketEvents(data as PolymarketInputData, poolId, poolSlug, period, supabase);
     } else if (venue === 'jupiter') {
-      return processJupiterEvents(data, poolId, poolSlug, period, supabase);
+      return processJupiterEvents(data as JupiterInputData, poolId, poolSlug, period, supabase);
     }
 
     return NextResponse.json({ error: 'Unknown venue' }, { status: 400 });
