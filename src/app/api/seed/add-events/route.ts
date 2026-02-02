@@ -41,19 +41,20 @@ interface PolymarketInputEvent {
   clob_ids: string[];
 }
 
-// Jupiter event format
+// Jupiter event format (now similar to Polymarket)
 interface JupiterInputEvent {
   id: string;
+  market_id: string;
+  slug: string;
   title: string;
   sport: string;
-  start_time: string;
-  close_time: string;
-  status: string;
   volume: number;
+  start_time: string;
+  end_date: string;
   has_draw: boolean;
-  outcomes: string[]; // 2 or 3 (with Tie)
+  outcomes: string[]; // 2 or 3 (with Draw)
   prices: number[];   // 2 or 3
-  market_ids: string[];
+  clob_ids: string[];
 }
 
 interface PolymarketInputData {
@@ -64,10 +65,9 @@ interface PolymarketInputData {
 }
 
 interface JupiterInputData {
-  source: string;
   generated_at: string;
   date_range: { start: string; end: string };
-  search_terms: string[];
+  sports: string[];
   events: JupiterInputEvent[];
 }
 
@@ -114,22 +114,25 @@ function getSubcategoryFromSport(sport: string, slug: string): string {
     return slugMap[slugPrefix];
   }
 
-  // Direct sport mappings (for Jupiter format)
+  // Direct sport mappings (handles both lowercase and uppercase)
+  const sportLower = sport.toLowerCase();
   const sportMap: Record<string, string> = {
     'laliga': 'laliga',
     'premier': 'epl',
+    'football': 'epl', // Jupiter uses FOOTBALL for EPL
     'nba': 'nba',
     'nhl': 'nhl',
     'nfl': 'nfl',
     'mlb': 'mlb',
     'ucl': 'ucl',
+    'tennis': 'tennis',
   };
 
-  if (sportMap[sport.toLowerCase()]) {
-    return sportMap[sport.toLowerCase()];
+  if (sportMap[sportLower]) {
+    return sportMap[sportLower];
   }
 
-  return sport.toLowerCase();
+  return sportLower;
 }
 
 /**
@@ -233,7 +236,7 @@ async function processPolymarketEvents(
 }
 
 /**
- * Process Jupiter events
+ * Process Jupiter events (now using Polymarket-like format)
  */
 async function processJupiterEvents(
   data: JupiterInputData,
@@ -242,21 +245,21 @@ async function processJupiterEvents(
   period: string,
   supabase: ReturnType<typeof createServiceClient>
 ) {
-  const results: { success: string[]; failed: Array<{ id: string; error: string }> } = {
+  const results: { success: string[]; failed: Array<{ slug: string; error: string }> } = {
     success: [],
     failed: [],
   };
 
   for (const event of data.events) {
     try {
-      const subcategory = getSubcategoryFromSport(event.sport, event.id);
+      const subcategory = getSubcategoryFromSport(event.sport, event.slug);
 
-      // Jupiter has 2 or 3 outcomes (3rd is Tie)
+      // Jupiter has 2 or 3 outcomes (3rd is Draw)
       const outcomeALabel = event.outcomes[0];
       const outcomeBLabel = event.outcomes[1];
       const outcomeDrawLabel = event.has_draw && event.outcomes[2] ? event.outcomes[2] : null;
 
-      const outcomAProb = event.prices[0];
+      const outcomeAProb = event.prices[0];
       const outcomeBProb = event.prices[1];
       const outcomeDrawProb = event.has_draw && event.prices[2] ? event.prices[2] : null;
 
@@ -264,7 +267,7 @@ async function processJupiterEvents(
         // Jupiter-specific fields
         venue: 'jupiter',
         venue_event_id: event.id,
-        venue_slug: event.id, // Jupiter uses the same ID as slug
+        venue_slug: event.slug,
 
         // Common fields
         title: event.title,
@@ -272,14 +275,14 @@ async function processJupiterEvents(
         subcategory,
         outcome_a_label: outcomeALabel,
         outcome_b_label: outcomeBLabel,
-        outcome_a_probability: outcomAProb,
+        outcome_a_probability: outcomeAProb,
         outcome_b_probability: outcomeBProb,
         outcome_draw_label: outcomeDrawLabel,
         outcome_draw_probability: outcomeDrawProb,
         supports_draw: event.has_draw,
         volume: event.volume,
         event_start_at: event.start_time,
-        resolution_deadline_at: event.close_time,
+        resolution_deadline_at: event.end_date || data.date_range.end,
         status: 'upcoming',
         last_price_sync_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -287,21 +290,60 @@ async function processJupiterEvents(
         period: period,
       };
 
-      const { error: eventError } = await supabase
+      const { data: upsertedEvent, error: eventError } = await supabase
         .from('events')
-        .upsert(eventData, { onConflict: 'venue,venue_event_id' })
+        .upsert(eventData, { onConflict: 'venue,venue_slug' })
         .select('id')
         .single();
 
       if (eventError) {
-        results.failed.push({ id: event.id, error: eventError.message });
+        results.failed.push({ slug: event.slug, error: eventError.message });
         continue;
       }
 
-      results.success.push(event.id);
+      // Store clob_ids as tokens (similar to Polymarket)
+      const tokens: Array<{
+        event_id: string;
+        outcome: 'a' | 'b' | 'draw';
+        outcome_label: string;
+        token_id: string;
+      }> = [
+        {
+          event_id: upsertedEvent.id,
+          outcome: 'a',
+          outcome_label: outcomeALabel,
+          token_id: event.clob_ids[0],
+        },
+        {
+          event_id: upsertedEvent.id,
+          outcome: 'b',
+          outcome_label: outcomeBLabel,
+          token_id: event.clob_ids[1],
+        },
+      ];
+
+      // Add draw token if exists
+      if (event.has_draw && event.clob_ids[2]) {
+        tokens.push({
+          event_id: upsertedEvent.id,
+          outcome: 'draw',
+          outcome_label: outcomeDrawLabel || 'Draw',
+          token_id: event.clob_ids[2],
+        });
+      }
+
+      const { error: tokensError } = await supabase
+        .from('polymarket_tokens')
+        .upsert(tokens, { onConflict: 'event_id,outcome' });
+
+      if (tokensError) {
+        console.error(`Token error for ${event.slug}:`, tokensError);
+      }
+
+      results.success.push(event.slug);
     } catch (err) {
       results.failed.push({
-        id: event.id,
+        slug: event.slug,
         error: err instanceof Error ? err.message : 'Unknown error',
       });
     }
