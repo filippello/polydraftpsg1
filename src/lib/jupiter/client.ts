@@ -1,8 +1,8 @@
 /**
- * Jupiter/Kalshi Explore Mode API Client
+ * Jupiter/Explore Mode API Client
  *
- * Fetches real-time prices and market data for Explore mode.
- * Uses mock data for development, Kalshi API for production.
+ * Fetches market data for Explore mode.
+ * Uses mock data for testing, API for production.
  */
 
 import type {
@@ -12,7 +12,7 @@ import type {
 } from './types';
 import { getMockMarkets, getMockMarketById } from './mock-data';
 
-// Set to true to use mock data instead of real API
+// Toggle this to switch between mock and API
 const USE_MOCK_DATA = true;
 
 // ============================================
@@ -47,15 +47,14 @@ function setCache<T>(key: string, data: T): void {
 // ============================================
 
 /**
- * Fetch explore markets with pagination
+ * Fetch explore markets
  */
 export async function getExploreMarkets(
   params: FetchExploreMarketsParams = {}
 ): Promise<ExploreMarket[]> {
-  // Use mock data
   if (USE_MOCK_DATA) {
     // Simulate network delay
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 200));
 
     let markets = getMockMarkets();
 
@@ -75,29 +74,37 @@ export async function getExploreMarkets(
       );
     }
 
-    // Apply limit
+    // Apply pagination
     const limit = params.limit || 20;
     const offset = params.offset || 0;
     return markets.slice(offset, offset + limit);
   }
 
-  // Real API implementation would go here
+  // Production: fetch from API
   const cacheKey = `markets-${JSON.stringify(params)}`;
   const cached = getCached<ExploreMarket[]>(cacheKey);
   if (cached) return cached;
 
-  // Fallback to mock if API not configured
-  return getMockMarkets();
+  try {
+    const response = await fetch('/api/explore/markets');
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    const data = await response.json();
+    const markets: ExploreMarket[] = data.markets || [];
+    setCache(cacheKey, markets);
+    return markets;
+  } catch (error) {
+    console.error('Error fetching explore markets:', error);
+    return [];
+  }
 }
 
 /**
- * Get a single market by ID with real-time prices
+ * Get a single market by ID
  */
 export async function getEventPrices(eventId: string): Promise<ExploreMarket | null> {
-  // Use mock data
   if (USE_MOCK_DATA) {
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 100));
     return getMockMarketById(eventId);
   }
 
@@ -105,51 +112,59 @@ export async function getEventPrices(eventId: string): Promise<ExploreMarket | n
   const cached = getCached<ExploreMarket>(cacheKey);
   if (cached) return cached;
 
-  // Fallback to mock
-  return getMockMarketById(eventId);
+  try {
+    const markets = await getExploreMarkets();
+    const market = markets.find((m) => m.id === eventId);
+    if (market) setCache(cacheKey, market);
+    return market || null;
+  } catch (error) {
+    console.error('Error fetching event prices:', error);
+    return null;
+  }
 }
 
 /**
- * Get all outcomes for a market (for multi-outcome events)
+ * Get all outcomes for a market
  */
-export async function getMarketOutcomes(
-  marketId: string
-): Promise<ExploreOutcome[]> {
+export async function getMarketOutcomes(marketId: string): Promise<ExploreOutcome[]> {
   const market = await getEventPrices(marketId);
   if (!market) return [];
   return market.outcomes;
 }
 
 /**
- * Refresh prices for a market (bypasses cache)
+ * Refresh prices (bypasses cache)
  */
 export async function refreshEventPrices(eventId: string): Promise<ExploreMarket | null> {
   cache.delete(`event-${eventId}`);
-  cache.delete(`outcomes-${eventId}`);
+  cache.clear();
   return getEventPrices(eventId);
 }
 
 /**
- * Get featured/popular markets for the explore grid
+ * Get featured markets for the grid
  */
 export async function getFeaturedMarkets(limit: number = 20): Promise<ExploreMarket[]> {
-  // Use mock data
   if (USE_MOCK_DATA) {
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 400));
-
+    await new Promise((r) => setTimeout(r, 300));
     const markets = getMockMarkets();
     // Sort by volume (descending)
-    const sorted = [...markets].sort((a, b) => b.volume - a.volume);
-    return sorted.slice(0, limit);
+    return [...markets].sort((a, b) => b.volume - a.volume).slice(0, limit);
   }
 
   const cacheKey = `featured-${limit}`;
   const cached = getCached<ExploreMarket[]>(cacheKey);
   if (cached) return cached;
 
-  // Fallback to mock
-  return getMockMarkets().slice(0, limit);
+  try {
+    const markets = await getExploreMarkets({ limit });
+    const sorted = [...markets].sort((a, b) => b.volume - a.volume);
+    setCache(cacheKey, sorted);
+    return sorted;
+  } catch (error) {
+    console.error('Error fetching featured markets:', error);
+    return [];
+  }
 }
 
 /**
