@@ -13,7 +13,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/game', label: 'Home', icon: '🏠' },
   { href: '/my-packs', label: 'My Packs', icon: '📦', showBadge: true },
   { href: '/leaderboard', label: 'Ranks', icon: '🏆' },
   { href: '/profile', label: 'Profile', icon: '👤' },
@@ -31,7 +31,7 @@ export function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-game-primary/95 backdrop-blur-sm border-t border-card-border safe-area-inset-bottom">
       <div className="flex items-center justify-around px-4 py-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href === '/game' && pathname === '/');
           const showBadge = item.showBadge && badgeCount > 0;
 
           return (
