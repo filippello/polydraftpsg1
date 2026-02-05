@@ -257,16 +257,16 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
             </motion.div>
 
             {/* Card content */}
-            <div className="flex-1 flex flex-col p-6 relative z-10">
-              {/* Top: Category icon */}
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-                  <span className="text-3xl">{getCategoryEmoji(market.category)}</span>
-                </div>
+            <div className="flex-1 flex flex-col relative z-10">
+              {/* Event question at top */}
+              <div className="px-3 py-2 border-b border-purple-500/30 bg-black/30">
+                <p className="text-xs text-center text-white font-bold font-pixel-heading leading-snug uppercase tracking-wide">
+                  {market.description || market.title}
+                </p>
               </div>
 
-              {/* Outcome image or icon */}
-              <div className="flex-shrink-0 mb-6">
+              {/* Outcome image */}
+              <div className="relative flex-1 border-b-4 border-purple-500/30">
                 {(() => {
                   const imageUrl = getOutcomeImageUrl(currentOutcome, market);
                   const hasImageError = imageError[currentOutcome.id];
@@ -274,62 +274,47 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
 
                   if (showImage) {
                     return (
-                      <div className="relative w-28 h-28 mx-auto rounded-2xl overflow-hidden border-2 border-white/20">
-                        <Image
-                          src={imageUrl}
-                          alt={currentOutcome.label}
-                          fill
-                          className="object-cover"
-                          onError={() => setImageError((prev) => ({ ...prev, [currentOutcome.id]: true }))}
-                        />
-                      </div>
+                      <Image
+                        src={imageUrl}
+                        alt={currentOutcome.label}
+                        fill
+                        className="object-cover"
+                        onError={() => setImageError((prev) => ({ ...prev, [currentOutcome.id]: true }))}
+                      />
                     );
                   }
 
                   return (
-                    <div className="w-28 h-28 mx-auto rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-600/30 border-2 border-purple-500/30 flex items-center justify-center">
-                      <span className="text-5xl">{getCategoryEmoji(market.category)}</span>
+                    <div className="w-full h-full bg-gradient-to-br from-purple-600/30 to-indigo-600/30 flex items-center justify-center">
+                      <span className="text-7xl">{getCategoryEmoji(market.category)}</span>
                     </div>
                   );
                 })()}
               </div>
 
-              {/* Outcome label */}
-              <h2 className="text-2xl font-bold text-center mb-2 font-pixel-body leading-tight">
-                {currentOutcome.label}
-              </h2>
+              {/* Bottom info section */}
+              <div className="p-4">
+                <h2 className="text-xl font-bold text-center mb-2 font-pixel-body leading-tight">
+                  {currentOutcome.label}
+                </h2>
 
-              {/* Context: For binary show the question */}
-              {market.is_binary && (
-                <p className="text-sm text-gray-400 text-center mb-4">
-                  Will this happen?
+                <p className="text-4xl font-bold text-purple-400 font-pixel-heading text-center mb-3">
+                  {formatProbability(currentOutcome.probability)}
                 </p>
-              )}
 
-              {/* Probability - Big and centered */}
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-6xl font-bold text-purple-400 font-pixel-heading mb-2">
-                    {formatProbability(currentOutcome.probability)}
-                  </p>
-                  <p className="text-sm text-gray-500 uppercase tracking-wider">
-                    current odds
-                  </p>
-                </div>
-              </div>
-
-              {/* Swipe hints */}
-              <div className="flex items-center justify-between text-sm pt-4 border-t border-white/10">
-                <div className="flex items-center gap-2 text-red-400">
-                  <span className="text-lg">←</span>
-                  <span className="font-bold">NO</span>
-                </div>
-                <div className="text-gray-500 text-xs">
-                  ↓ PASS
-                </div>
-                <div className="flex items-center gap-2 text-green-400">
-                  <span className="font-bold">YES</span>
-                  <span className="text-lg">→</span>
+                {/* Swipe hints */}
+                <div className="flex items-center justify-between text-sm pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-2 text-red-400">
+                    <span className="text-lg">←</span>
+                    <span className="font-bold">NO</span>
+                  </div>
+                  <div className="text-gray-500 text-xs">
+                    ↓ PASS
+                  </div>
+                  <div className="flex items-center gap-2 text-green-400">
+                    <span className="font-bold">YES</span>
+                    <span className="text-lg">→</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -337,40 +322,17 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
         </motion.div>
       </div>
 
-      {/* Bottom action buttons */}
-      <div className="flex gap-3 px-4 pb-6 pt-2">
-        <button
-          onClick={handleNo}
-          className="flex-1 bg-red-600/20 border-2 border-red-500/50 rounded-xl py-4 font-bold text-red-400 hover:bg-red-600/30 active:scale-95 transition-all text-lg"
-        >
-          NO
-        </button>
-        <button
-          onClick={handlePass}
-          className="px-6 bg-gray-600/20 border-2 border-gray-500/50 rounded-xl py-4 font-medium text-gray-400 hover:bg-gray-600/30 active:scale-95 transition-all"
-        >
-          Skip
-        </button>
-        <button
-          onClick={handleYes}
-          className="flex-1 bg-green-600/20 border-2 border-green-500/50 rounded-xl py-4 font-bold text-green-400 hover:bg-green-600/30 active:scale-95 transition-all text-lg"
-        >
-          YES
-        </button>
-      </div>
-
       {/* Progress dots */}
       <div className="flex justify-center gap-1.5 pb-4">
         {outcomes.map((_, i) => (
           <div
             key={i}
-            className={`w-2 h-2 rounded-full transition-all ${
-              i === currentOutcomeIndex
+            className={`w-2 h-2 rounded-full transition-all ${i === currentOutcomeIndex
                 ? 'bg-purple-500 scale-125'
                 : i < currentOutcomeIndex
                   ? 'bg-purple-500/50'
                   : 'bg-gray-700'
-            }`}
+              }`}
           />
         ))}
       </div>

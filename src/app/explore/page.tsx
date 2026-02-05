@@ -15,7 +15,7 @@ export default function ExplorePage() {
   };
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen bg-game-bg">
+    <main className="min-h-screen bg-game-bg overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-game-bg/95 backdrop-blur-sm border-b border-white/10 safe-area-inset-top">
         <div className="flex items-center gap-3 p-4">
@@ -40,7 +40,7 @@ export default function ExplorePage() {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto pb-safe">
+      <div className="pb-safe">
         <ExploreGrid />
       </div>
     </main>

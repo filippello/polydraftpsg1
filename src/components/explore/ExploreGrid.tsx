@@ -138,7 +138,7 @@ export function ExploreGrid({ initialFetch = true }: ExploreGridProps) {
   return (
     <div className="flex flex-col">
       {/* Grid */}
-      <div className="grid grid-cols-2 gap-3 p-4">
+      <div className="grid grid-cols-2 gap-3 p-4 items-start">
         {markets.map((market, index) => (
           <ExploreCard key={market.id} market={market} index={index} />
         ))}
