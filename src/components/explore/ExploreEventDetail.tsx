@@ -21,15 +21,16 @@ export function ExploreEventDetail({ market }: ExploreEventDetailProps) {
     return () => selectEvent(null);
   }, [market, selectEvent, setOutcomeIndex]);
 
-  const handleBet = (outcome: ExploreOutcome, direction: 'yes' | 'no') => {
+  const handleBet = (outcome: ExploreOutcome, direction: 'yes' | 'no', amount: number) => {
     addPendingBet({
       marketId: market.id,
       outcomeId: outcome.id,
       outcomeLabel: outcome.label,
       probability: outcome.probability,
       direction,
+      amount,
     });
-    console.log(`Bet ${direction.toUpperCase()} on "${outcome.label}" @ ${Math.round(outcome.probability * 100)}%`);
+    console.log(`Bet ${direction.toUpperCase()} $${amount} on "${outcome.label}" @ ${Math.round(outcome.probability * 100)}%`);
   };
 
   const handleBack = () => {

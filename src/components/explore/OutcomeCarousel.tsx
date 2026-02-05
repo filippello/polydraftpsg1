@@ -5,11 +5,12 @@ import Image from 'next/image';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import type { ExploreMarket, ExploreOutcome } from '@/lib/jupiter/types';
 import { useExploreStore } from '@/stores/explore';
+import { PurchaseModal } from './PurchaseModal';
 
 interface OutcomeCarouselProps {
   market: ExploreMarket;
   outcomes: ExploreOutcome[];
-  onBet?: (outcome: ExploreOutcome, direction: 'yes' | 'no') => void;
+  onBet?: (outcome: ExploreOutcome, direction: 'yes' | 'no', amount: number) => void;
   onBack?: () => void;
   onComplete?: () => void;
 }
@@ -56,6 +57,13 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | 'down' | null>(null);
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
 
+  // Purchase modal state
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [pendingSwipe, setPendingSwipe] = useState<{
+    outcome: ExploreOutcome;
+    direction: 'yes' | 'no';
+  } | null>(null);
+
   const currentOutcome = outcomes[currentOutcomeIndex];
   const isLastOutcome = currentOutcomeIndex >= outcomes.length - 1;
   const hasFinished = currentOutcomeIndex >= outcomes.length;
@@ -79,22 +87,16 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
 
     if (absX > absY) {
       if (info.offset.x > thresholdX) {
-        // Swiped right -> YES
-        setExitDirection('right');
-        setTimeout(() => {
-          onBet?.(currentOutcome, 'yes');
-          handleNext();
-        }, 200);
+        // Swiped right -> YES - show purchase modal
+        setPendingSwipe({ outcome: currentOutcome, direction: 'yes' });
+        setShowPurchaseModal(true);
       } else if (info.offset.x < -thresholdX) {
-        // Swiped left -> NO
-        setExitDirection('left');
-        setTimeout(() => {
-          onBet?.(currentOutcome, 'no');
-          handleNext();
-        }, 200);
+        // Swiped left -> NO - show purchase modal
+        setPendingSwipe({ outcome: currentOutcome, direction: 'no' });
+        setShowPurchaseModal(true);
       }
     } else if (absY > thresholdY && info.offset.y > 0) {
-      // Swiped down -> PASS
+      // Swiped down -> PASS (no modal, skip directly)
       setExitDirection('down');
       setTimeout(() => {
         handleNext();
@@ -113,18 +115,44 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
     }
   };
 
-  const handleYes = () => {
-    onBet?.(currentOutcome, 'yes');
-    handleNext();
+  // Button handlers (for potential future button UI)
+  const _handleYes = () => {
+    setPendingSwipe({ outcome: currentOutcome, direction: 'yes' });
+    setShowPurchaseModal(true);
   };
 
-  const handleNo = () => {
-    onBet?.(currentOutcome, 'no');
-    handleNext();
+  const _handleNo = () => {
+    setPendingSwipe({ outcome: currentOutcome, direction: 'no' });
+    setShowPurchaseModal(true);
   };
 
-  const handlePass = () => {
+  const _handlePass = () => {
     handleNext();
+  };
+  // Expose for potential future use
+  void _handleYes;
+  void _handleNo;
+  void _handlePass;
+
+  // Modal handlers
+  const handlePurchaseConfirm = (amount: number) => {
+    if (pendingSwipe) {
+      const { outcome, direction } = pendingSwipe;
+      // Set exit direction for animation
+      setExitDirection(direction === 'yes' ? 'right' : 'left');
+      setShowPurchaseModal(false);
+      setTimeout(() => {
+        onBet?.(outcome, direction, amount);
+        handleNext();
+        setPendingSwipe(null);
+      }, 200);
+    }
+  };
+
+  const handlePurchaseCancel = () => {
+    setShowPurchaseModal(false);
+    setPendingSwipe(null);
+    // Card stays in place, no action taken
   };
 
   // Finished all outcomes
@@ -336,6 +364,18 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
           />
         ))}
       </div>
+
+      {/* Purchase Modal */}
+      {pendingSwipe && (
+        <PurchaseModal
+          isOpen={showPurchaseModal}
+          outcome={pendingSwipe.outcome}
+          market={market}
+          direction={pendingSwipe.direction}
+          onConfirm={handlePurchaseConfirm}
+          onCancel={handlePurchaseCancel}
+        />
+      )}
     </div>
   );
 }

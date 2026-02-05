@@ -3,6 +3,7 @@
 import { useEffect, useCallback, type ReactNode } from 'react';
 import { Provider as JotaiProvider } from 'jotai';
 import { useSessionStore } from '@/stores/session';
+import { SolanaWalletProvider } from '@/providers/WalletProvider';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -77,7 +78,9 @@ function SessionInitializer({ children }: { children: ReactNode }) {
 export function Providers({ children }: ProvidersProps) {
   return (
     <JotaiProvider>
-      <SessionInitializer>{children}</SessionInitializer>
+      <SolanaWalletProvider>
+        <SessionInitializer>{children}</SessionInitializer>
+      </SolanaWalletProvider>
     </JotaiProvider>
   );
 }

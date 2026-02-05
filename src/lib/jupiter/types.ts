@@ -20,6 +20,7 @@ export interface ExploreOutcome {
   image_slug?: string;     // Slug with extension to construct path: {event_ticker}-{image_slug} (e.g., 'jd-vance.jpg')
   clob_id: string;         // For executing bets
   ticker?: string;         // Market ticker for this outcome
+  jupiterMarketId?: string; // Jupiter Prediction Market ID (e.g., "POLY-559652")
 }
 
 /**
