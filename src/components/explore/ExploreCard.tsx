@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import type { ExploreMarket } from '@/lib/jupiter/types';
@@ -33,11 +35,13 @@ function getCategoryEmoji(category: string): string {
   if (lower.includes('entertain') || lower.includes('oscar')) return '🎬';
   if (lower.includes('tech')) return '💻';
   if (lower.includes('weather') || lower.includes('climate')) return '🌡️';
+  if (lower.includes('business') || lower.includes('m&a')) return '🏢';
   return '🎯';
 }
 
 export function ExploreCard({ market, index = 0 }: ExploreCardProps) {
   const pendingBets = useExploreStore((state) => state.pendingBets);
+  const [imageError, setImageError] = useState(false);
 
   // Check if user has any bets on this market
   const hasBets = pendingBets.some((b) => b.marketId === market.id);
@@ -45,6 +49,9 @@ export function ExploreCard({ market, index = 0 }: ExploreCardProps) {
   const isBinary = market.is_binary;
   const topOutcomes = market.outcomes.slice(0, 3);
   const hasMoreOutcomes = market.outcomes.length > 3;
+
+  // Determine if we should show image or emoji fallback
+  const hasValidImage = market.image_url && !imageError;
 
   return (
     <Link href={`/explore/${market.id}`}>
@@ -76,9 +83,20 @@ export function ExploreCard({ market, index = 0 }: ExploreCardProps) {
 
           {/* Header */}
           <div className="flex items-start gap-3 mb-3">
-            {/* Category emoji */}
-            <div className="w-12 h-12 rounded-lg bg-game-secondary/50 flex items-center justify-center text-2xl flex-shrink-0">
-              {getCategoryEmoji(market.category)}
+            {/* Event image or category emoji fallback */}
+            <div className="w-12 h-12 rounded-lg bg-game-secondary/50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {hasValidImage ? (
+                <Image
+                  src={market.image_url!}
+                  alt={market.title}
+                  width={48}
+                  height={48}
+                  className="w-full h-full object-cover"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <span className="text-2xl">{getCategoryEmoji(market.category)}</span>
+              )}
             </div>
 
             {/* Title */}

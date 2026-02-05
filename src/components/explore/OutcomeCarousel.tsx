@@ -26,12 +26,35 @@ function getCategoryEmoji(category: string): string {
   if (lower.includes('econ') || lower.includes('finance')) return '📈';
   if (lower.includes('entertain') || lower.includes('oscar')) return '🎬';
   if (lower.includes('tech')) return '💻';
+  if (lower.includes('business') || lower.includes('m&a')) return '🏢';
   return '🎯';
+}
+
+/**
+ * Get the image URL for an outcome with fallback logic:
+ * 1. If outcome.image_slug exists → construct path: /images/explore/outcomes/{event_ticker}-{image_slug}
+ *    (image_slug includes the file extension, e.g., 'jd-vance.jpg')
+ * 2. If outcome.image_url exists → use it directly (legacy support)
+ * 3. If market.image_url exists → use event image
+ * 4. null (will show emoji fallback)
+ */
+function getOutcomeImageUrl(outcome: ExploreOutcome, market: ExploreMarket): string | null {
+  // 1. Construct from image_slug if available (slug includes extension)
+  if (outcome.image_slug && market.event_ticker) {
+    return `/images/explore/outcomes/${market.event_ticker}-${outcome.image_slug}`;
+  }
+  // 2. Use direct image_url if provided (legacy)
+  if (outcome.image_url) return outcome.image_url;
+  // 3. Fallback to market/event image
+  if (market.image_url) return market.image_url;
+  // 4. No image available
+  return null;
 }
 
 export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }: OutcomeCarouselProps) {
   const { currentOutcomeIndex, nextOutcome, setOutcomeIndex } = useExploreStore();
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | 'down' | null>(null);
+  const [imageError, setImageError] = useState<Record<string, boolean>>({});
 
   const currentOutcome = outcomes[currentOutcomeIndex];
   const isLastOutcome = currentOutcomeIndex >= outcomes.length - 1;
@@ -244,20 +267,31 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
 
               {/* Outcome image or icon */}
               <div className="flex-shrink-0 mb-6">
-                {currentOutcome.image_url ? (
-                  <div className="relative w-28 h-28 mx-auto rounded-2xl overflow-hidden border-2 border-white/20">
-                    <Image
-                      src={currentOutcome.image_url}
-                      alt={currentOutcome.label}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-28 h-28 mx-auto rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-600/30 border-2 border-purple-500/30 flex items-center justify-center">
-                    <span className="text-5xl">🎯</span>
-                  </div>
-                )}
+                {(() => {
+                  const imageUrl = getOutcomeImageUrl(currentOutcome, market);
+                  const hasImageError = imageError[currentOutcome.id];
+                  const showImage = imageUrl && !hasImageError;
+
+                  if (showImage) {
+                    return (
+                      <div className="relative w-28 h-28 mx-auto rounded-2xl overflow-hidden border-2 border-white/20">
+                        <Image
+                          src={imageUrl}
+                          alt={currentOutcome.label}
+                          fill
+                          className="object-cover"
+                          onError={() => setImageError((prev) => ({ ...prev, [currentOutcome.id]: true }))}
+                        />
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="w-28 h-28 mx-auto rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-600/30 border-2 border-purple-500/30 flex items-center justify-center">
+                      <span className="text-5xl">{getCategoryEmoji(market.category)}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Outcome label */}

@@ -16,7 +16,8 @@ export interface ExploreOutcome {
   id: string;
   label: string;
   probability: number;
-  image_url?: string;      // Logo, photo, etc.
+  image_url?: string;      // Full image URL (legacy, for direct URLs)
+  image_slug?: string;     // Slug with extension to construct path: {event_ticker}-{image_slug} (e.g., 'jd-vance.jpg')
   clob_id: string;         // For executing bets
   ticker?: string;         // Market ticker for this outcome
 }
