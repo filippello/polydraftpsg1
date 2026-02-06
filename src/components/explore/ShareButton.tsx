@@ -53,22 +53,22 @@ function Spinner({ className }: { className?: string }) {
 function buildTweetText(
   outcome: string,
   probability: number,
+  market: string,
   direction?: "yes" | "no",
   amount?: number
 ): string {
   const probText = `${Math.round(probability * 100)}%`;
+  const bet = direction ? (direction === "yes" ? "YES" : "NO") : null;
 
-  if (direction && amount) {
-    const bet = direction === "yes" ? "YES" : "NO";
-    return `I just bet $${amount} ${bet} on "${outcome}" at ${probText}\n\nMake your prediction on @polydraft`;
+  if (bet && amount) {
+    return `${market}\n\n"${outcome}" at ${probText} — I just bet $${amount} ${bet}\n\nWhat's your pick? 👇\n@polydraftfun`;
   }
 
-  if (direction) {
-    const bet = direction === "yes" ? "YES" : "NO";
-    return `I'm betting ${bet} on "${outcome}" at ${probText}\n\nMake your prediction on @polydraft`;
+  if (bet) {
+    return `${market}\n\n"${outcome}" at ${probText} — I'm betting ${bet}\n\nWhat's your pick? 👇\n@polydraftfun`;
   }
 
-  return `"${outcome}" is at ${probText}\n\nWhat do you think? Make your prediction on @polydraft`;
+  return `${market}\n\n"${outcome}" is at ${probText}\n\nWhat do you think? 👇\n@polydraftfun`;
 }
 
 function getOutcomeImageUrl(
@@ -132,7 +132,7 @@ export function ShareButton({
       });
 
       // Build tweet text
-      const text = buildTweetText(outcome.label, outcome.probability, direction, amount);
+      const text = buildTweetText(outcome.label, outcome.probability, market.title, direction, amount);
 
       // Open Twitter intent
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(sharePageUrl)}`;
@@ -149,7 +149,7 @@ export function ShareButton({
         market: market.title,
         amount,
       });
-      const text = buildTweetText(outcome.label, outcome.probability, direction, amount);
+      const text = buildTweetText(outcome.label, outcome.probability, market.title, direction, amount);
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(sharePageUrl)}`;
       window.open(twitterUrl, "_blank", "width=550,height=420");
     } finally {
