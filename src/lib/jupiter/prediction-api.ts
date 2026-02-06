@@ -118,18 +118,31 @@ export async function createOrder(
     body: JSON.stringify(request),
   });
 
+  const responseText = await response.text();
+
   if (!response.ok) {
-    let errorMessage = `API error: ${response.status}`;
+    // Try to extract detailed error message
+    let errorMessage = `API ${response.status}`;
     try {
-      const errorData = (await response.json()) as JupiterApiError;
-      errorMessage = errorData.message || errorData.error || errorMessage;
+      const errorData = JSON.parse(responseText);
+      // Jupiter API can return different error formats
+      errorMessage = `${response.status}: ${errorData.message || errorData.error || errorData.type || JSON.stringify(errorData).slice(0, 150)}`;
     } catch {
-      // Use default error message
+      errorMessage = `${response.status}: ${responseText.slice(0, 150)}`;
     }
     throw new Error(errorMessage);
   }
 
-  return response.json() as Promise<CreateOrderResponse>;
+  const data = JSON.parse(responseText) as CreateOrderResponse;
+
+  // Check if transaction was generated (null means insufficient balance or other issue)
+  if (!data.transaction) {
+    // Include order info for debugging
+    const orderInfo = data.order ? `contracts=${data.order.contracts}, cost=${data.order.orderCostUsd}` : 'no order info';
+    throw new Error(`No transaction generated (${orderInfo}). Check USDC balance.`);
+  }
+
+  return data;
 }
 
 /**

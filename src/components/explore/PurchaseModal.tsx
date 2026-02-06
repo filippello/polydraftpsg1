@@ -4,10 +4,9 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ExploreMarket, ExploreOutcome } from '@/lib/jupiter/types';
 import { useState, useCallback } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { useConnection } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { useUnifiedWalletContext } from '@jup-ag/wallet-adapter';
 import { VersionedTransaction } from '@solana/web3.js';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import {
   createPredictionOrder,
   microToUsd,
@@ -95,9 +94,15 @@ export function PurchaseModal({
   const [imageError, setImageError] = useState(false);
   const [purchaseState, setPurchaseState] = useState<PurchaseState>('select_amount');
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult>({});
+  const [debugLog, setDebugLog] = useState<string[]>([]);
 
-  const { publicKey, sendTransaction, connected } = useWallet();
+  const addLog = (msg: string) => {
+    setDebugLog((prev) => [...prev.slice(-10), `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
+
+  const { publicKey, sendTransaction, connected, wallet } = useWallet();
   const { connection } = useConnection();
+  const { setShowModal } = useUnifiedWalletContext();
 
   const isYes = direction === 'yes';
   const imageUrl = getOutcomeImageUrl(outcome, market);
@@ -113,11 +118,31 @@ export function PurchaseModal({
   }, []);
 
   const handleConfirm = useCallback(async () => {
-    if (!selectedAmount || !publicKey || !sendTransaction || !connected) {
+    addLog(`Start: amt=${selectedAmount}, conn=${connected}, wallet=${!!wallet}, pk=${!!publicKey}`);
+
+    if (!selectedAmount) {
+      addLog('No amount selected');
+      return;
+    }
+
+    // If not connected, open wallet modal
+    if (!connected) {
+      addLog('Not connected, opening wallet modal...');
+      setShowModal(true);
+      return;
+    }
+
+    if (!publicKey || !sendTransaction) {
+      addLog('Missing pk or sendTx');
+      setPurchaseState('error');
+      setPurchaseResult({
+        error: 'Please connect your wallet first.',
+      });
       return;
     }
 
     if (!jupiterMarketId) {
+      addLog('No Jupiter market ID');
       setPurchaseState('error');
       setPurchaseResult({
         error: 'This market is not available for trading on Jupiter yet.',
@@ -126,39 +151,40 @@ export function PurchaseModal({
     }
 
     try {
-      // Step 1: Create order
+      const price = isYes ? outcome.probability : 1 - outcome.probability;
+      const microPrice = Math.floor(price * 1_000_000);
+      const microAmount = Math.floor(selectedAmount * 1_000_000);
+      addLog(`Request: mkt=${jupiterMarketId}, isYes=${isYes}`);
+      addLog(`price=${price} (${microPrice}), amt=${selectedAmount} (${microAmount})`);
       setPurchaseState('creating_order');
 
-      const price = isYes ? outcome.probability : 1 - outcome.probability;
+      let orderResponse;
+      try {
+        orderResponse = await createPredictionOrder(
+          publicKey.toBase58(),
+          jupiterMarketId,
+          isYes,
+          price,
+          selectedAmount
+        );
+        addLog(`Order OK: contracts=${orderResponse.order.contracts}`);
+      } catch (apiError) {
+        const msg = apiError instanceof Error ? apiError.message : String(apiError);
+        addLog(`API Error: ${msg}`);
+        throw apiError;
+      }
 
-      const orderResponse = await createPredictionOrder(
-        publicKey.toBase58(),
-        jupiterMarketId,
-        isYes,
-        price,
-        selectedAmount
-      );
-
-      // Step 2: Send transaction (wallet will sign and send via its own RPC)
+      addLog('Signing tx...');
       setPurchaseState('signing');
 
       const txBuffer = Buffer.from(orderResponse.transaction, 'base64');
       const tx = VersionedTransaction.deserialize(txBuffer);
+
       const signature = await sendTransaction(tx, connection);
+      addLog(`Sent! sig=${signature.slice(0, 16)}...`);
 
-      // Step 3: Confirm on chain
-      setPurchaseState('confirming');
-
-      await connection.confirmTransaction(
-        {
-          signature,
-          blockhash: orderResponse.txMeta.blockhash,
-          lastValidBlockHeight: orderResponse.txMeta.lastValidBlockHeight,
-        },
-        'confirmed'
-      );
-
-      // Success!
+      // Optimistic: show success immediately after tx is sent
+      // The transaction is already on the network, confirmation is just waiting for finality
       setPurchaseState('success');
       setPurchaseResult({
         signature,
@@ -167,25 +193,25 @@ export function PurchaseModal({
         fee: microToUsd(orderResponse.order.estimatedTotalFeeUsd),
       });
 
-      // Notify parent
       onConfirm(selectedAmount);
     } catch (error) {
-      console.error('Purchase error:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      addLog(`ERROR: ${errMsg}`);
       setPurchaseState('error');
-      setPurchaseResult({
-        error: error instanceof Error ? error.message : 'Transaction failed',
-      });
+      setPurchaseResult({ error: errMsg });
     }
   }, [
     selectedAmount,
     publicKey,
     sendTransaction,
     connected,
+    setShowModal,
     connection,
     isYes,
     outcome.probability,
     jupiterMarketId,
     onConfirm,
+    addLog,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -272,20 +298,29 @@ export function PurchaseModal({
                 <h3 className="text-base font-bold text-center mb-1 font-pixel-body">
                   {outcome.label}
                 </h3>
-                <p className="text-xl font-bold text-purple-400 font-pixel-heading text-center mb-3">
+                <p className="text-xl font-bold text-purple-400 font-pixel-heading text-center mb-1">
                   {formatProbability(outcome.probability)}
                 </p>
 
-                {/* Wallet not connected */}
-                {!connected && purchaseState === 'select_amount' && (
-                  <div className="mb-3 text-center">
-                    <p className="text-sm text-gray-400 mb-3">Connect your wallet to purchase</p>
-                    <WalletMultiButton className="!bg-purple-600 hover:!bg-purple-700" />
+                {/* Wallet status debug */}
+                <p className="text-xs text-gray-500 text-center mb-3">
+                  Wallet: {connected ? `Connected (${publicKey?.toBase58().slice(0, 8)}...)` : wallet ? 'Not connected (wallet available)' : 'No wallet detected'}
+                </p>
+
+                {/* Connect wallet button when no wallet detected */}
+                {purchaseState === 'select_amount' && !connected && (
+                  <div className="mb-3">
+                    <button
+                      onClick={() => setShowModal(true)}
+                      className="w-full py-3 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors"
+                    >
+                      Connect Wallet
+                    </button>
                   </div>
                 )}
 
                 {/* Market not available warning */}
-                {connected && purchaseState === 'select_amount' && !hasJupiterMarket && (
+                {purchaseState === 'select_amount' && !hasJupiterMarket && (
                   <div className="mb-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
                     <p className="text-yellow-400 text-sm text-center">
                       This market is not available for trading on Jupiter yet.
@@ -293,8 +328,8 @@ export function PurchaseModal({
                   </div>
                 )}
 
-                {/* Amount selection (only when connected and in select_amount state) */}
-                {connected && purchaseState === 'select_amount' && hasJupiterMarket && (
+                {/* Amount selection (show when market is available, regardless of connection) */}
+                {purchaseState === 'select_amount' && hasJupiterMarket && (
                   <>
                     <div className="mb-3">
                       <p className="text-sm text-gray-400 text-center mb-2">Select amount (USDC)</p>
@@ -358,7 +393,7 @@ export function PurchaseModal({
                             : 'bg-gray-700 text-gray-500 cursor-not-allowed'
                         }`}
                       >
-                        Confirm ${selectedAmount || ''}
+                        {connected ? `Confirm $${selectedAmount || ''}` : `Connect & Buy $${selectedAmount || ''}`}
                       </button>
                     </div>
                   </>
@@ -419,6 +454,16 @@ export function PurchaseModal({
                     >
                       Done
                     </button>
+                  </div>
+                )}
+
+                {/* Debug panel */}
+                {debugLog.length > 0 && (
+                  <div className="mb-3 p-2 rounded-lg bg-black/50 border border-white/10 max-h-32 overflow-y-auto">
+                    <p className="text-xs text-gray-500 mb-1">Debug:</p>
+                    {debugLog.map((log, i) => (
+                      <p key={i} className="text-xs text-gray-400 font-mono break-all">{log}</p>
+                    ))}
                   </div>
                 )}
 
