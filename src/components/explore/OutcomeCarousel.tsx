@@ -6,6 +6,7 @@ import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import type { ExploreMarket, ExploreOutcome } from '@/lib/jupiter/types';
 import { useExploreStore } from '@/stores/explore';
 import { PurchaseModal } from './PurchaseModal';
+import { ShareButton } from './ShareButton';
 
 interface OutcomeCarouselProps {
   market: ExploreMarket;
@@ -318,6 +319,15 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                     </div>
                   );
                 })()}
+
+                {/* Share button */}
+                <div className="absolute top-3 right-3 z-30">
+                  <ShareButton
+                    outcome={currentOutcome}
+                    market={market}
+                    variant="icon"
+                  />
+                </div>
               </div>
 
               {/* Bottom info section */}

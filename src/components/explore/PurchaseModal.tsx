@@ -12,6 +12,7 @@ import {
   microToUsd,
 } from '@/lib/jupiter/prediction-api';
 import { getSolscanUrl } from '@/lib/jupiter/transaction';
+import { ShareButton } from './ShareButton';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -447,6 +448,16 @@ export function PurchaseModal({
                     >
                       View on Solscan ↗
                     </a>
+
+                    {/* Share button */}
+                    <div className="mb-3">
+                      <ShareButton
+                        outcome={outcome}
+                        market={market}
+                        direction={direction}
+                        amount={selectedAmount || undefined}
+                      />
+                    </div>
 
                     <button
                       onClick={handleCancel}
