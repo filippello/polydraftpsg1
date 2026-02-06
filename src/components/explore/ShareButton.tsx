@@ -132,7 +132,7 @@ export function ShareButton({
       });
 
       // Build tweet text
-      const text = buildTweetText(outcome.label, outcome.probability, market.title, direction, amount);
+      const text = buildTweetText(outcome.label, outcome.probability, market.title, direction || "yes", amount);
 
       // Open Twitter intent
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(sharePageUrl)}`;
@@ -149,7 +149,7 @@ export function ShareButton({
         market: market.title,
         amount,
       });
-      const text = buildTweetText(outcome.label, outcome.probability, market.title, direction, amount);
+      const text = buildTweetText(outcome.label, outcome.probability, market.title, direction || "yes", amount);
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(sharePageUrl)}`;
       window.open(twitterUrl, "_blank", "width=550,height=420");
     } finally {

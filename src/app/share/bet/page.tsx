@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { getBetFromParams } from "@/lib/share/utils";
+import { ShareRedirect } from "./ShareRedirect";
 
 interface SharePageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -95,11 +96,12 @@ export default async function SharePage({ searchParams }: SharePageProps) {
 
   // Link to explore page (or specific market if marketId is available)
   const exploreLink = bet.marketId
-    ? `/explore/${category}/${bet.marketId}`
-    : `/explore/${category}`;
+    ? `/explore/${bet.marketId}`
+    : `/explore`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a2e] to-[#0f172a] flex flex-col items-center justify-center p-4">
+      <ShareRedirect url={exploreLink} />
       {/* Bet Preview Card */}
       <div className="max-w-md w-full">
         <div
