@@ -60,15 +60,15 @@ function buildTweetText(
 
   if (direction && amount) {
     const bet = direction === "yes" ? "YES" : "NO";
-    return `I just bet $${amount} ${bet} on "${outcome}" at ${probText}\n\nMake your prediction on @polydraft:`;
+    return `I just bet $${amount} ${bet} on "${outcome}" at ${probText}\n\nMake your prediction on @polydraft`;
   }
 
   if (direction) {
     const bet = direction === "yes" ? "YES" : "NO";
-    return `I'm betting ${bet} on "${outcome}" at ${probText}\n\nMake your prediction on @polydraft:`;
+    return `I'm betting ${bet} on "${outcome}" at ${probText}\n\nMake your prediction on @polydraft`;
   }
 
-  return `"${outcome}" is at ${probText}\n\nWhat do you think? Make your prediction on @polydraft:`;
+  return `"${outcome}" is at ${probText}\n\nWhat do you think? Make your prediction on @polydraft`;
 }
 
 function getOutcomeImageUrl(

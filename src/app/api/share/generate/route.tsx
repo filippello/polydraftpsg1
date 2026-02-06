@@ -65,7 +65,6 @@ export async function POST(request: NextRequest) {
     }
 
     const prob = parseFloat(probability);
-    const isYes = direction === "yes";
     const percentText = `${Math.round(prob * 100)}%`;
 
     // Landscape card for Twitter summary_large_image (2:1 ratio)
@@ -123,85 +122,77 @@ export async function POST(request: NextRequest) {
             </span>
           </div>
 
-          {/* Main content: image left, info right */}
+          {/* Main content: full-bleed image with overlay */}
           <div
             style={{
               flex: 1,
               display: "flex",
-              flexDirection: "row",
+              position: "relative",
               overflow: "hidden",
             }}
           >
-            {/* Left: outcome image (~45% width) */}
-            <div
-              style={{
-                width: "45%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
-                position: "relative",
-                borderRight: "3px solid rgba(168, 85, 247, 0.5)",
-                overflow: "hidden",
-              }}
-            >
-              {imageDataUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageDataUrl}
-                  alt=""
-                  width={540}
-                  height={540}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "100%",
-                    height: "100%",
-                  }}
-                >
-                  <span style={{ fontSize: 120 }}>🎯</span>
-                </div>
-              )}
-
-              {/* Gradient overlay on right edge */}
-              <div
+            {/* Full-bleed image */}
+            {imageDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imageDataUrl}
+                alt=""
+                width={1200}
+                height={540}
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: 60,
-                  background: "linear-gradient(to left, #16213e, transparent)",
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
                 }}
               />
-            </div>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "100%",
+                  height: "100%",
+                  background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
+                }}
+              >
+                <span style={{ fontSize: 120 }}>🎯</span>
+              </div>
+            )}
 
-            {/* Right: info (~55% width) */}
+            {/* Gradient overlay from bottom */}
             <div
               style={{
-                width: "55%",
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: "60%",
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
+              }}
+            />
+
+            {/* Text overlay */}
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "center",
-                padding: "24px 40px",
-                gap: 16,
+                justifyContent: "flex-end",
+                padding: "0 40px 40px 40px",
+                gap: 12,
               }}
             >
               {/* Outcome name */}
               <span
                 style={{
                   fontFamily: '"Press Start 2P"',
-                  fontSize: 22,
+                  fontSize: 28,
                   color: "white",
                   textAlign: "center",
                   textShadow: "2px 2px 0 rgba(0,0,0,0.8)",
@@ -215,7 +206,7 @@ export async function POST(request: NextRequest) {
               <span
                 style={{
                   fontFamily: '"Press Start 2P"',
-                  fontSize: 64,
+                  fontSize: 72,
                   color: "#a855f7",
                   textAlign: "center",
                   textShadow: "3px 3px 0 rgba(0,0,0,0.8)",
@@ -223,48 +214,6 @@ export async function POST(request: NextRequest) {
               >
                 {percentText}
               </span>
-
-              {/* Swipe hints */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  width: "100%",
-                  paddingTop: 16,
-                  borderTop: "2px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontFamily: '"Press Start 2P"', fontSize: 16, color: "#ef4444" }}>←</span>
-                  <span
-                    style={{
-                      fontFamily: '"Press Start 2P"',
-                      fontSize: 14,
-                      color: isYes ? "rgba(239,68,68,0.4)" : "#ef4444",
-                    }}
-                  >
-                    NO
-                  </span>
-                </div>
-
-                <span style={{ fontFamily: '"Press Start 2P"', fontSize: 12, color: "#6b7280" }}>
-                  ↓ PASS
-                </span>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span
-                    style={{
-                      fontFamily: '"Press Start 2P"',
-                      fontSize: 14,
-                      color: isYes ? "#22c55e" : "rgba(34,197,94,0.4)",
-                    }}
-                  >
-                    YES
-                  </span>
-                  <span style={{ fontFamily: '"Press Start 2P"', fontSize: 16, color: "#22c55e" }}>→</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
