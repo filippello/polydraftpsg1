@@ -307,6 +307,22 @@ canvas {
 }
 
 /* ============================================
+   Desktop Background Pattern
+   ============================================ */
+
+@media (min-width: 768px) {
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+/* ============================================
    Balatro Card Styles
    ============================================ */
 

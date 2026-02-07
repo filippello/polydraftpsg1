@@ -43,6 +43,13 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
   // Only show glow for rare and above
   const showGlow = rarity === 'rare' || rarity === 'epic' || rarity === 'legendary';
 
+  const handlePick = (outcome: Outcome) => {
+    if (exitDirection) return;
+    const dir = outcome === 'a' ? 'right' : outcome === 'b' ? 'left' : 'down';
+    setExitDirection(dir);
+    setTimeout(() => onSwipe(outcome), 200);
+  };
+
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = 100;
 
@@ -254,8 +261,8 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
               )}
             </div>
 
-            {/* Swipe hints */}
-            <div className="flex flex-col gap-2 text-sm pt-2">
+            {/* Swipe hints (mobile only) */}
+            <div className="flex md:hidden flex-col gap-2 text-sm pt-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-outcome-b">
                   <span>←</span>
@@ -271,6 +278,21 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
                   <span>↑↓ {event.outcome_draw_label || 'Draw'}</span>
                 </div>
               )}
+            </div>
+
+            {/* Pick buttons (desktop only) */}
+            <div className="hidden md:flex gap-2 pt-2" onPointerDownCapture={(e) => e.stopPropagation()}>
+              <button onClick={() => handlePick('b')} className="flex-1 py-2 rounded-lg bg-outcome-b/20 border border-outcome-b/50 text-outcome-b font-bold text-sm hover:bg-outcome-b/30 transition-colors">
+                {event.outcome_b_label}
+              </button>
+              {event.supports_draw && (
+                <button onClick={() => handlePick('draw')} className="flex-1 py-2 rounded-lg bg-gray-500/20 border border-gray-500/50 text-gray-400 font-bold text-sm hover:bg-gray-500/30 transition-colors">
+                  {event.outcome_draw_label || 'Draw'}
+                </button>
+              )}
+              <button onClick={() => handlePick('a')} className="flex-1 py-2 rounded-lg bg-outcome-a/20 border border-outcome-a/50 text-outcome-a font-bold text-sm hover:bg-outcome-a/30 transition-colors">
+                {event.outcome_a_label}
+              </button>
             </div>
           </div>
         </div>

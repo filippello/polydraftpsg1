@@ -28,7 +28,7 @@ export function BottomNav() {
   const badgeCount = pendingReveals > 0 ? pendingReveals : activePacksCount;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-game-primary/95 backdrop-blur-sm border-t border-card-border safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-game-primary/95 backdrop-blur-sm border-t border-card-border safe-area-inset-bottom md:left-1/2 md:right-auto md:-translate-x-1/2 md:max-w-[430px] md:w-full md:bottom-4 md:rounded-b-2xl">
       <div className="flex items-center justify-around px-4 py-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === '/game' && pathname === '/');

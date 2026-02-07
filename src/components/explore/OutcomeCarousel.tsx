@@ -116,24 +116,20 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
     }
   };
 
-  // Button handlers (for potential future button UI)
-  const _handleYes = () => {
+  const handleYes = () => {
     setPendingSwipe({ outcome: currentOutcome, direction: 'yes' });
     setShowPurchaseModal(true);
   };
 
-  const _handleNo = () => {
+  const handleNo = () => {
     setPendingSwipe({ outcome: currentOutcome, direction: 'no' });
     setShowPurchaseModal(true);
   };
 
-  const _handlePass = () => {
-    handleNext();
+  const handlePass = () => {
+    setExitDirection('down');
+    setTimeout(() => handleNext(), 200);
   };
-  // Expose for potential future use
-  void _handleYes;
-  void _handleNo;
-  void _handlePass;
 
   // Modal handlers
   const handlePurchaseConfirm = (amount: number) => {
@@ -340,8 +336,8 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                   {formatProbability(currentOutcome.probability)}
                 </p>
 
-                {/* Swipe hints */}
-                <div className="flex items-center justify-between text-sm pt-3 border-t border-white/10">
+                {/* Swipe hints (mobile only) */}
+                <div className="flex md:hidden items-center justify-between text-sm pt-3 border-t border-white/10">
                   <div className="flex items-center gap-2 text-red-400">
                     <span className="text-lg">←</span>
                     <span className="font-bold">NO</span>
@@ -353,6 +349,19 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                     <span className="font-bold">YES</span>
                     <span className="text-lg">→</span>
                   </div>
+                </div>
+
+                {/* Pick buttons (desktop only) */}
+                <div className="hidden md:flex gap-2 pt-3 border-t border-white/10" onPointerDownCapture={(e) => e.stopPropagation()}>
+                  <button onClick={handleNo} className="flex-1 py-2 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 font-bold text-sm hover:bg-red-500/30 transition-colors">
+                    NO
+                  </button>
+                  <button onClick={handlePass} className="flex-1 py-2 rounded-lg bg-gray-500/20 border border-gray-500/50 text-gray-400 font-bold text-sm hover:bg-gray-500/30 transition-colors">
+                    PASS
+                  </button>
+                  <button onClick={handleYes} className="flex-1 py-2 rounded-lg bg-green-500/20 border border-green-500/50 text-green-400 font-bold text-sm hover:bg-green-500/30 transition-colors">
+                    YES
+                  </button>
                 </div>
               </div>
             </div>

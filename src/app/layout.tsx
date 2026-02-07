@@ -60,7 +60,9 @@ export default function RootLayout({
         <Providers>
           {/* Balatro post-processing effects wrapper */}
           <div className="min-h-screen min-h-dvh flex flex-col balatro-noise balatro-vignette balatro-scanlines">
-            {children}
+            <div className="w-full max-w-[430px] mx-auto relative min-h-screen min-h-dvh flex flex-col md:my-4 md:rounded-2xl md:overflow-hidden md:shadow-2xl md:shadow-black/50 md:border md:border-white/10">
+              {children}
+            </div>
           </div>
         </Providers>
       </body>
