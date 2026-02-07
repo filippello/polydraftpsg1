@@ -174,6 +174,22 @@ export const MOCK_MARKETS: ExploreMarket[] = [
     is_binary: false,
     status: 'active',
   },
+  {
+    id: 'POLY-90178',
+    title: 'Will Jesus Christ Return Before 2027?',
+    description: 'Will Jesus Christ return before 2027?',
+    image_url: '/images/explore/events/jesus-christ-return-2027.png',
+    category: 'Culture',
+    subcategory: 'Pop-culture',
+    volume: 476_590,
+    end_date: '2026-12-31T23:59:00Z',
+    event_ticker: 'will-jesus-christ-return-in-2025',
+    outcomes: [
+      { id: 'POLY-90178-yes', label: 'Yes', probability: 0.05, clob_id: 'POLY-90178-YES', jupiterMarketId: 'POLY-90178' },
+    ],
+    is_binary: true,
+    status: 'active',
+  },
 ];
 
 /**
