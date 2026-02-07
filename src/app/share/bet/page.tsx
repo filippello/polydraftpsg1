@@ -7,19 +7,6 @@ interface SharePageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-function getCategoryEmoji(market: string): string {
-  const lower = market.toLowerCase();
-  if (
-    lower.includes("sport") ||
-    lower.includes("nba") ||
-    lower.includes("nfl")
-  )
-    return "sports";
-  if (lower.includes("politic") || lower.includes("election")) return "politics";
-  if (lower.includes("crypto") || lower.includes("bitcoin")) return "crypto";
-  return "politics";
-}
-
 // Generate the same hash as the API to construct Supabase URL
 // Must match the hash function in /api/share/generate/route.tsx
 function generateImageHash(params: Record<string, unknown>): string {
@@ -92,7 +79,6 @@ export default async function SharePage({ searchParams }: SharePageProps) {
   const params = await searchParams;
   const bet = getBetFromParams(params as Record<string, string>);
   const isYes = bet.direction === "yes";
-  const category = getCategoryEmoji(bet.market);
 
   // Link to explore page (or specific market if marketId is available)
   const exploreLink = bet.marketId
