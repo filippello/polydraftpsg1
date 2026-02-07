@@ -9,6 +9,7 @@
     "lint": "next lint",
     "remotion:studio": "remotion studio remotion/Root.tsx",
     "remotion:render": "remotion render remotion/Root.tsx PolydraftHype out/hype-video.mp4",
+    "remotion:render:explore": "remotion render remotion/Root.tsx ExploreDemo out/explore-demo.mp4",
     "remotion:preview": "remotion preview remotion/Root.tsx"
   },
   "dependencies": {

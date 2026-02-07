@@ -2,6 +2,7 @@ import React from "react";
 import { Composition, registerRoot } from "remotion";
 import { PolydraftHype } from "./compositions/PolydraftHype";
 import { BetShareCard } from "./compositions/BetShareCard";
+import { ExploreDemo } from "./compositions/ExploreDemo";
 
 const RemotionRoot: React.FC = () => {
   return (
@@ -29,6 +30,15 @@ const RemotionRoot: React.FC = () => {
           market: "Presidential Election 2028",
           amount: 5,
         }}
+      />
+      <Composition
+        id="ExploreDemo"
+        component={ExploreDemo}
+        durationInFrames={750}
+        fps={30}
+        width={1080}
+        height={1080}
+        defaultProps={{}}
       />
     </>
   );

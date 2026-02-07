@@ -75,14 +75,18 @@ function getOutcomeImageUrl(
   outcome: ExploreOutcome,
   market: ExploreMarket
 ): string | undefined {
-  // Construct full URL for the outcome image
+  // Construct full URL for the outcome image (must be absolute for server-side fetch)
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://polydraft.app";
 
   if (outcome.image_slug && market.event_ticker) {
     return `${baseUrl}/images/explore/outcomes/${market.event_ticker}-${outcome.image_slug}`;
   }
-  if (outcome.image_url) return outcome.image_url;
-  if (market.image_url) return market.image_url;
+  if (outcome.image_url) {
+    return outcome.image_url.startsWith("/") ? `${baseUrl}${outcome.image_url}` : outcome.image_url;
+  }
+  if (market.image_url) {
+    return market.image_url.startsWith("/") ? `${baseUrl}${market.image_url}` : market.image_url;
+  }
   return undefined;
 }
 
