@@ -190,6 +190,23 @@ export const MOCK_MARKETS: ExploreMarket[] = [
     is_binary: true,
     status: 'active',
   },
+  {
+    id: 'POLY-202830',
+    title: 'Will Bitcoin Hit $60k or $80k First?',
+    description: 'Will Bitcoin hit $60k or $80k first?',
+    image_url: '/images/explore/events/btc-60k-or-80k.png',
+    category: 'Crypto',
+    subcategory: 'Bitcoin',
+    volume: 8_168,
+    end_date: '2026-12-31T23:59:00Z',
+    event_ticker: 'btc-60k-or-80k-first',
+    outcomes: [
+      { id: 'POLY-202830-60k', label: '$60k', probability: 0.55, clob_id: 'POLY-202830-60K', jupiterMarketId: 'POLY-202830' },
+      { id: 'POLY-202830-80k', label: '$80k', probability: 0.45, clob_id: 'POLY-202830-80K', jupiterMarketId: 'POLY-202830' },
+    ],
+    is_binary: false,
+    status: 'active',
+  },
 ];
 
 /**
