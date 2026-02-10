@@ -207,6 +207,22 @@ export const MOCK_MARKETS: ExploreMarket[] = [
     is_binary: false,
     status: 'active',
   },
+  {
+    id: 'POLY-90177',
+    title: 'Will the US Confirm That Aliens Exist Before 2027?',
+    description: 'Will the US confirm that aliens exist before 2027?',
+    image_url: '/images/explore/events/us-confirms-aliens-2027.png',
+    category: 'Culture',
+    subcategory: 'Science',
+    volume: 1_930_610,
+    end_date: '2026-12-31T23:59:00Z',
+    event_ticker: 'us-confirms-aliens-2027',
+    outcomes: [
+      { id: 'POLY-90177-yes', label: 'Yes', probability: 0.085, clob_id: 'POLY-90177-YES', jupiterMarketId: 'POLY-90177' },
+    ],
+    is_binary: true,
+    status: 'active',
+  },
 ];
 
 /**
