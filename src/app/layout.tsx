@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Press_Start_2P, VT323 } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { getActiveVenue } from "@/lib/adapters/config";
+import { isPSG1 } from "@/lib/platform";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -32,13 +33,22 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: "#1a1a2e",
-};
+export const viewport: Viewport = isPSG1()
+  ? {
+      width: 1240,
+      height: 1080,
+      initialScale: 1,
+      maximumScale: 1,
+      userScalable: false,
+      themeColor: "#1a1a2e",
+    }
+  : {
+      width: "device-width",
+      initialScale: 1,
+      maximumScale: 1,
+      userScalable: false,
+      themeColor: "#1a1a2e",
+    };
 
 export default function RootLayout({
   children,
@@ -60,7 +70,10 @@ export default function RootLayout({
         <Providers>
           {/* Balatro post-processing effects wrapper */}
           <div className="min-h-screen min-h-dvh flex flex-col balatro-noise balatro-vignette balatro-scanlines">
-            <div className="w-full max-w-[430px] mx-auto relative min-h-screen min-h-dvh flex flex-col md:my-4 md:rounded-2xl md:overflow-hidden md:shadow-2xl md:shadow-black/50 md:border md:border-white/10">
+            <div className={isPSG1()
+              ? "w-full max-w-[1240px] h-screen mx-auto relative flex flex-col overflow-hidden pl-20"
+              : "w-full max-w-[430px] mx-auto relative min-h-screen min-h-dvh flex flex-col md:my-4 md:rounded-2xl md:overflow-hidden md:shadow-2xl md:shadow-black/50 md:border md:border-white/10"
+            }>
               {children}
             </div>
           </div>

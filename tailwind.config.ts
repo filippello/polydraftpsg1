@@ -7,6 +7,14 @@ const config: Config = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    screens: {
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+      'psg1': '1240px',
+    },
     extend: {
       // Pixel Art Color Palette
       colors: {
@@ -99,7 +107,7 @@ const config: Config = {
         // Balatro animations
         "bounce-pop": "bounce-pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
         "foil-shimmer": "foil-shimmer 3s linear infinite",
-        "screen-shake": "screen-shake 0.4s ease-in-out",
+        "screen-shake": "screen-shake 0.5s ease-out",
       },
       keyframes: {
         shake: {
@@ -154,10 +162,16 @@ const config: Config = {
           "100%": { backgroundPosition: "200% 0" },
         },
         "screen-shake": {
-          "0%, 100%": { transform: "translate(0)" },
-          "25%": { transform: "translate(-4px, 2px)" },
-          "50%": { transform: "translate(4px, -2px)" },
-          "75%": { transform: "translate(-2px, 0)" },
+          "0%, 100%": { transform: "translate(0) rotate(0deg)" },
+          "10%": { transform: "translate(-8px, 4px) rotate(-1.5deg)" },
+          "20%": { transform: "translate(10px, -3px) rotate(2deg)" },
+          "30%": { transform: "translate(-10px, 6px) rotate(-2deg)" },
+          "40%": { transform: "translate(8px, -4px) rotate(1.5deg)" },
+          "50%": { transform: "translate(-6px, 3px) rotate(-1deg)" },
+          "60%": { transform: "translate(6px, -2px) rotate(1deg)" },
+          "70%": { transform: "translate(-4px, 2px) rotate(-0.5deg)" },
+          "80%": { transform: "translate(3px, -1px) rotate(0.5deg)" },
+          "90%": { transform: "translate(-2px, 1px) rotate(0deg)" },
         },
       },
       // Box shadows for pixel depth

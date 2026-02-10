@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import type { ExploreMarket, ExploreOutcome } from '@/lib/jupiter/types';
 import { useExploreStore } from '@/stores/explore';
+import { isPSG1 } from '@/lib/platform';
+import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { PurchaseModal } from './PurchaseModal';
 import { ShareButton } from './ShareButton';
 
@@ -79,6 +81,73 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
   const noOverlayOpacity = useTransform(x, [-100, 0], [1, 0]);
   const passOverlayOpacity = useTransform(y, [0, 100], [0, 1]);
 
+  // Screen shake state
+  const [screenShake, setScreenShake] = useState(false);
+
+  const handleNext = useCallback(() => {
+    if (isLastOutcome) {
+      setOutcomeIndex(outcomes.length);
+      setTimeout(() => onComplete?.(), 300);
+    } else {
+      setExitDirection(null);
+      nextOutcome();
+    }
+  }, [isLastOutcome, outcomes.length, onComplete, nextOutcome, setOutcomeIndex]);
+
+  const triggerScreenShake = useCallback(() => {
+    setScreenShake(true);
+    setTimeout(() => setScreenShake(false), 500);
+  }, []);
+
+  const handleYes = useCallback(() => {
+    setPendingSwipe({ outcome: currentOutcome, direction: 'yes' });
+    setShowPurchaseModal(true);
+  }, [currentOutcome]);
+
+  const handleNo = useCallback(() => {
+    setPendingSwipe({ outcome: currentOutcome, direction: 'no' });
+    setShowPurchaseModal(true);
+  }, [currentOutcome]);
+
+  const handlePass = useCallback(() => {
+    setExitDirection('down');
+    setTimeout(() => handleNext(), 200);
+  }, [handleNext]);
+
+  // Hold callbacks with screen shake for PSG1
+  const handleHoldYes = useCallback(() => {
+    triggerScreenShake();
+    handleYes();
+  }, [triggerScreenShake, handleYes]);
+
+  const handleHoldNo = useCallback(() => {
+    triggerScreenShake();
+    handleNo();
+  }, [triggerScreenShake, handleNo]);
+
+  // Hold-to-confirm for PSG1 keyboard
+  const psg1 = isPSG1();
+  const { chargeDirection, chargeProgress } = useHoldToConfirm({
+    enabled: psg1 && !hasFinished && !showPurchaseModal,
+    onYes: handleHoldYes,
+    onNo: handleHoldNo,
+    onPass: handlePass,
+    motionX: x,
+  });
+
+  // Escape to go back (PSG1 only)
+  useEffect(() => {
+    if (!psg1 || showPurchaseModal || hasFinished) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onBack?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [psg1, showPurchaseModal, hasFinished, onBack]);
+
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const thresholdX = 100;
     const thresholdY = 80;
@@ -88,47 +157,13 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
 
     if (absX > absY) {
       if (info.offset.x > thresholdX) {
-        // Swiped right -> YES - show purchase modal
-        setPendingSwipe({ outcome: currentOutcome, direction: 'yes' });
-        setShowPurchaseModal(true);
+        handleYes();
       } else if (info.offset.x < -thresholdX) {
-        // Swiped left -> NO - show purchase modal
-        setPendingSwipe({ outcome: currentOutcome, direction: 'no' });
-        setShowPurchaseModal(true);
+        handleNo();
       }
     } else if (absY > thresholdY && info.offset.y > 0) {
-      // Swiped down -> PASS (no modal, skip directly)
-      setExitDirection('down');
-      setTimeout(() => {
-        handleNext();
-      }, 200);
+      handlePass();
     }
-  };
-
-  const handleNext = () => {
-    if (isLastOutcome) {
-      // Finished all outcomes
-      setOutcomeIndex(outcomes.length); // Move past last
-      setTimeout(() => onComplete?.(), 300);
-    } else {
-      setExitDirection(null);
-      nextOutcome();
-    }
-  };
-
-  const handleYes = () => {
-    setPendingSwipe({ outcome: currentOutcome, direction: 'yes' });
-    setShowPurchaseModal(true);
-  };
-
-  const handleNo = () => {
-    setPendingSwipe({ outcome: currentOutcome, direction: 'no' });
-    setShowPurchaseModal(true);
-  };
-
-  const handlePass = () => {
-    setExitDirection('down');
-    setTimeout(() => handleNext(), 200);
   };
 
   // Modal handlers
@@ -149,7 +184,9 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
   const handlePurchaseCancel = () => {
     setShowPurchaseModal(false);
     setPendingSwipe(null);
-    // Card stays in place, no action taken
+    if (psg1) {
+      animate(x, 0, { type: 'spring', stiffness: 300, damping: 30 });
+    }
   };
 
   // Finished all outcomes
@@ -192,7 +229,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
   }
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className={`flex-1 flex flex-col ${screenShake ? 'animate-screen-shake' : ''}`}>
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-white/10">
         <button
@@ -231,7 +268,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
           key={currentOutcome.id}
           className="absolute inset-4 z-10"
           style={{ x, y, rotate, opacity }}
-          drag
+          drag={!psg1}
           dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
           dragElastic={0.8}
           onDragEnd={handleDragEnd}
@@ -243,7 +280,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                 ? { x: 400, rotate: 20, opacity: 0 }
                 : exitDirection === 'down'
                   ? { y: 400, opacity: 0 }
-                  : { scale: 1, opacity: 1, x: 0, y: 0 }
+                  : { scale: 1 + chargeProgress * 0.07, opacity: 1, x: 0, y: 0 }
           }
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         >
@@ -280,6 +317,32 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                 PASS
               </div>
             </motion.div>
+
+            {/* Charge glow overlay (PSG1 only) */}
+            {psg1 && chargeDirection && (
+              <div
+                className="absolute inset-0 pointer-events-none z-20 rounded-balatro-card"
+                style={{
+                  boxShadow: [
+                    `inset 0 0 ${60 * chargeProgress}px ${20 * chargeProgress}px ${
+                      chargeDirection === 'right'
+                        ? `rgba(34, 197, 94, ${chargeProgress * 0.7})`
+                        : `rgba(239, 68, 68, ${chargeProgress * 0.7})`
+                    }`,
+                    `0 0 ${40 * chargeProgress}px ${15 * chargeProgress}px ${
+                      chargeDirection === 'right'
+                        ? `rgba(34, 197, 94, ${chargeProgress * 0.5})`
+                        : `rgba(239, 68, 68, ${chargeProgress * 0.5})`
+                    }`,
+                  ].join(', '),
+                  border: `${2 + chargeProgress * 2}px solid ${
+                    chargeDirection === 'right'
+                      ? `rgba(34, 197, 94, ${chargeProgress * 0.8})`
+                      : `rgba(239, 68, 68, ${chargeProgress * 0.8})`
+                  }`,
+                }}
+              />
+            )}
 
             {/* Card content */}
             <div className="flex-1 flex flex-col relative z-10">
@@ -336,30 +399,71 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                   {formatProbability(currentOutcome.probability)}
                 </p>
 
-                {/* Swipe hints (mobile only) */}
-                <div className="flex md:hidden items-center justify-between text-sm pt-3 border-t border-white/10">
-                  <div className="flex items-center gap-2 text-red-400">
-                    <span className="text-lg">←</span>
-                    <span className="font-bold">NO</span>
+                {/* Swipe hints (mobile only, hidden on PSG1) */}
+                {!psg1 && (
+                  <div className="flex md:hidden items-center justify-between text-sm pt-3 border-t border-white/10">
+                    <div className="flex items-center gap-2 text-red-400">
+                      <span className="text-lg">←</span>
+                      <span className="font-bold">NO</span>
+                    </div>
+                    <div className="text-gray-500 text-xs">
+                      ↓ PASS
+                    </div>
+                    <div className="flex items-center gap-2 text-green-400">
+                      <span className="font-bold">YES</span>
+                      <span className="text-lg">→</span>
+                    </div>
                   </div>
-                  <div className="text-gray-500 text-xs">
-                    ↓ PASS
-                  </div>
-                  <div className="flex items-center gap-2 text-green-400">
-                    <span className="font-bold">YES</span>
-                    <span className="text-lg">→</span>
-                  </div>
-                </div>
+                )}
 
-                {/* Pick buttons (desktop only) */}
-                <div className="hidden md:flex gap-2 pt-3 border-t border-white/10" onPointerDownCapture={(e) => e.stopPropagation()}>
-                  <button onClick={handleNo} className="flex-1 py-2 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 font-bold text-sm hover:bg-red-500/30 transition-colors">
+                {/* PSG1 keyboard hints */}
+                {psg1 && (
+                  <div className="flex items-center justify-between text-sm pt-3 border-t border-white/10">
+                    <div className={`flex items-center gap-1 transition-colors ${chargeDirection === 'left' ? 'text-red-300' : 'text-red-400/60'}`}>
+                      <span className="text-xs font-mono">Hold</span>
+                      <span className="font-bold">← NO</span>
+                    </div>
+                    <div className="text-gray-500 text-xs">
+                      ↓ PASS
+                    </div>
+                    <div className={`flex items-center gap-1 transition-colors ${chargeDirection === 'right' ? 'text-green-300' : 'text-green-400/60'}`}>
+                      <span className="font-bold">YES →</span>
+                      <span className="text-xs font-mono">Hold</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Charge progress bar (PSG1 only) */}
+                {psg1 && chargeDirection && (
+                  <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-none ${
+                        chargeDirection === 'right'
+                          ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]'
+                          : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-auto'
+                      }`}
+                      style={{ width: `${chargeProgress * 100}%` }}
+                    />
+                  </div>
+                )}
+
+                {/* Pick buttons (desktop / PSG1) */}
+                <div className={`${psg1 ? 'flex' : 'hidden md:flex'} gap-2 pt-3 border-t border-white/10`} onPointerDownCapture={(e) => e.stopPropagation()}>
+                  <button onClick={handleNo} className={`flex-1 rounded-lg border font-bold transition-colors ${psg1 ? 'py-3 text-base' : 'py-2 text-sm'} ${
+                    chargeDirection === 'left'
+                      ? 'bg-red-500/40 border-red-400 text-red-300 animate-pulse'
+                      : 'bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30'
+                  }`}>
                     NO
                   </button>
-                  <button onClick={handlePass} className="flex-1 py-2 rounded-lg bg-gray-500/20 border border-gray-500/50 text-gray-400 font-bold text-sm hover:bg-gray-500/30 transition-colors">
+                  <button onClick={handlePass} className={`flex-1 rounded-lg bg-gray-500/20 border border-gray-500/50 text-gray-400 font-bold hover:bg-gray-500/30 transition-colors ${psg1 ? 'py-3 text-base' : 'py-2 text-sm'}`}>
                     PASS
                   </button>
-                  <button onClick={handleYes} className="flex-1 py-2 rounded-lg bg-green-500/20 border border-green-500/50 text-green-400 font-bold text-sm hover:bg-green-500/30 transition-colors">
+                  <button onClick={handleYes} className={`flex-1 rounded-lg border font-bold transition-colors ${psg1 ? 'py-3 text-base' : 'py-2 text-sm'} ${
+                    chargeDirection === 'right'
+                      ? 'bg-green-500/40 border-green-400 text-green-300 animate-pulse'
+                      : 'bg-green-500/20 border-green-500/50 text-green-400 hover:bg-green-500/30'
+                  }`}>
                     YES
                   </button>
                 </div>

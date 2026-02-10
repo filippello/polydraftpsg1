@@ -1,16 +1,20 @@
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ExploreCard } from './ExploreCard';
 import { useExploreStore } from '@/stores/explore';
 import { getExploreMarkets, getFeaturedMarkets } from '@/lib/jupiter/client';
+import { isPSG1 } from '@/lib/platform';
+import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
 
 interface ExploreGridProps {
   initialFetch?: boolean;
+  onBack?: () => void;
 }
 
-export function ExploreGrid({ initialFetch = true }: ExploreGridProps) {
+export function ExploreGrid({ initialFetch = true, onBack }: ExploreGridProps) {
   const {
     markets,
     isLoadingMarkets,
@@ -70,6 +74,44 @@ export function ExploreGrid({ initialFetch = true }: ExploreGridProps) {
     }
   }, [cursor, hasMore, appendMarkets, setLoadingMarkets]);
 
+  // PSG1 keyboard navigation
+  const psg1 = isPSG1();
+  const gridColumns = psg1 ? 3 : 2;
+  const router = useRouter();
+  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  const onSelect = useCallback(
+    (index: number) => {
+      const market = markets[index];
+      if (market) router.push(`/explore/${market.id}`);
+    },
+    [markets, router]
+  );
+
+  const { focusedIndex } = usePSG1Navigation({
+    enabled: psg1 && markets.length > 0,
+    itemCount: markets.length,
+    columns: gridColumns,
+    onSelect,
+    onBack,
+  });
+
+  // Auto-scroll focused card into view
+  useEffect(() => {
+    if (!psg1) return;
+    const el = cardRefs.current.get(focusedIndex);
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [focusedIndex, psg1]);
+
+  // Prefetch when focus reaches last 2 rows
+  useEffect(() => {
+    if (!psg1 || markets.length === 0) return;
+    const lastRowStart = markets.length - gridColumns * 2;
+    if (focusedIndex >= lastRowStart && hasMore && !isLoadingMarkets) {
+      loadMore();
+    }
+  }, [focusedIndex, psg1, markets.length, gridColumns, hasMore, isLoadingMarkets, loadMore]);
+
   // Intersection observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -114,8 +156,8 @@ export function ExploreGrid({ initialFetch = true }: ExploreGridProps) {
   // Loading state (initial)
   if (isLoadingMarkets && markets.length === 0) {
     return (
-      <div className="grid grid-cols-2 gap-3 p-4">
-        {[...Array(4)].map((_, i) => (
+      <div className={`grid gap-3 p-4 ${isPSG1() ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        {[...Array(isPSG1() ? 6 : 4)].map((_, i) => (
           <div
             key={i}
             className="bg-card-bg border-balatro border-white/10 rounded-balatro-card h-[180px] animate-pulse"
@@ -138,9 +180,17 @@ export function ExploreGrid({ initialFetch = true }: ExploreGridProps) {
   return (
     <div className="flex flex-col">
       {/* Grid */}
-      <div className="grid grid-cols-2 gap-3 p-4 items-start">
+      <div className={`grid gap-3 p-4 items-start ${isPSG1() ? 'grid-cols-3' : 'grid-cols-2'}`}>
         {markets.map((market, index) => (
-          <ExploreCard key={market.id} market={market} index={index} />
+          <div
+            key={market.id}
+            ref={(el) => {
+              if (el) cardRefs.current.set(index, el);
+              else cardRefs.current.delete(index);
+            }}
+          >
+            <ExploreCard market={market} index={index} focused={psg1 && focusedIndex === index} />
+          </div>
         ))}
       </div>
 

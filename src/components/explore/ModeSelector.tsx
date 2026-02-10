@@ -1,11 +1,17 @@
 'use client';
 
+import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { isPSG1 } from '@/lib/platform';
+import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
 
 interface ModeSelectorProps {
   className?: string;
 }
+
+const modeHrefs = ['/explore', '/game'];
 
 const cardVariants = {
   hidden: { opacity: 0, y: 50, scale: 0.8 },
@@ -35,6 +41,24 @@ const cardVariants = {
 };
 
 export function ModeSelector({ className = '' }: ModeSelectorProps) {
+  const router = useRouter();
+  const psg1 = isPSG1();
+
+  const onSelect = useCallback(
+    (index: number) => {
+      router.push(modeHrefs[index]);
+    },
+    [router]
+  );
+
+  const { focusedIndex } = usePSG1Navigation({
+    enabled: psg1,
+    itemCount: 2,
+    columns: 2,
+    onSelect,
+    wrap: true,
+  });
+
   return (
     <div className={`flex flex-col items-center justify-center gap-8 ${className}`}>
       {/* Title */}
@@ -63,7 +87,7 @@ export function ModeSelector({ className = '' }: ModeSelectorProps) {
             whileTap="tap"
             className="relative group cursor-pointer"
           >
-            <div className="bg-card-bg border-balatro-thick border-purple-500/60 rounded-balatro-card p-6 h-full min-h-[200px] flex flex-col items-center justify-center gap-4 shadow-hard-lg overflow-hidden">
+            <div className={`bg-card-bg border-balatro-thick border-purple-500/60 rounded-balatro-card p-6 h-full min-h-[200px] flex flex-col items-center justify-center gap-4 shadow-hard-lg overflow-hidden ${psg1 && focusedIndex === 0 ? 'psg1-focus' : ''}`}>
               {/* Glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-transparent to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -108,7 +132,7 @@ export function ModeSelector({ className = '' }: ModeSelectorProps) {
             whileTap="tap"
             className="relative group cursor-pointer"
           >
-            <div className="bg-card-bg border-balatro-thick border-game-gold/60 rounded-balatro-card p-6 h-full min-h-[200px] flex flex-col items-center justify-center gap-4 shadow-hard-lg overflow-hidden">
+            <div className={`bg-card-bg border-balatro-thick border-game-gold/60 rounded-balatro-card p-6 h-full min-h-[200px] flex flex-col items-center justify-center gap-4 shadow-hard-lg overflow-hidden ${psg1 && focusedIndex === 1 ? 'psg1-focus' : ''}`}>
               {/* Glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 

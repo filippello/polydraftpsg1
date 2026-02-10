@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ExploreMarket, ExploreOutcome } from '@/lib/jupiter/types';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useUnifiedWalletContext } from '@jup-ag/wallet-adapter';
 import { VersionedTransaction } from '@solana/web3.js';
@@ -13,6 +13,7 @@ import {
 } from '@/lib/jupiter/prediction-api';
 import { getSolscanUrl } from '@/lib/jupiter/transaction';
 import { ShareButton } from './ShareButton';
+import { isPSG1 } from '@/lib/platform';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -227,6 +228,98 @@ export function PurchaseModal({
 
   const isProcessing = ['creating_order', 'signing', 'confirming'].includes(purchaseState);
 
+  // PSG1 keyboard navigation
+  const psg1 = isPSG1();
+  const [psg1FocusIndex, setPsg1FocusIndex] = useState(0);
+
+  // Reset focus when state changes
+  useEffect(() => {
+    setPsg1FocusIndex(0);
+  }, [purchaseState]);
+
+  // Auto-select amount when navigating in select_amount state (amounts row)
+  useEffect(() => {
+    if (psg1 && isOpen && purchaseState === 'select_amount' && hasJupiterMarket && psg1FocusIndex < PRESET_AMOUNTS.length) {
+      setSelectedAmount(PRESET_AMOUNTS[psg1FocusIndex]);
+    }
+  }, [psg1, isOpen, purchaseState, hasJupiterMarket, psg1FocusIndex]);
+
+  useEffect(() => {
+    if (!psg1 || !isOpen || isProcessing) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (purchaseState === 'select_amount' && hasJupiterMarket) {
+        // 6 items: 4 amounts (0-3), Cancel (4), Confirm (5)
+        const totalItems = PRESET_AMOUNTS.length + 2;
+
+        switch (e.key) {
+          case 'ArrowLeft':
+            e.preventDefault();
+            setPsg1FocusIndex((prev) => Math.max(0, prev - 1));
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            setPsg1FocusIndex((prev) => Math.min(totalItems - 1, prev + 1));
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            // From amounts row → jump to Cancel
+            if (psg1FocusIndex < PRESET_AMOUNTS.length) {
+              setPsg1FocusIndex(PRESET_AMOUNTS.length);
+            }
+            break;
+          case 'ArrowUp':
+            e.preventDefault();
+            // From actions row → jump back to amounts
+            if (psg1FocusIndex >= PRESET_AMOUNTS.length) {
+              setPsg1FocusIndex(0);
+            }
+            break;
+          case 'Enter':
+            e.preventDefault();
+            if (psg1FocusIndex < PRESET_AMOUNTS.length) {
+              // Amount selected, jump to Confirm
+              setPsg1FocusIndex(PRESET_AMOUNTS.length + 1);
+            } else if (psg1FocusIndex === PRESET_AMOUNTS.length) {
+              handleCancel();
+            } else {
+              handleConfirm();
+            }
+            break;
+          case 'Escape':
+            e.preventDefault();
+            handleCancel();
+            break;
+        }
+      } else if (purchaseState === 'success') {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          e.preventDefault();
+          handleCancel(); // "Done" button
+        }
+      } else if (purchaseState === 'error') {
+        switch (e.key) {
+          case 'ArrowLeft':
+          case 'ArrowRight':
+            e.preventDefault();
+            setPsg1FocusIndex((prev) => (prev === 0 ? 1 : 0));
+            break;
+          case 'Enter':
+            e.preventDefault();
+            if (psg1FocusIndex === 0) handleCancel();
+            else handleRetry();
+            break;
+          case 'Escape':
+            e.preventDefault();
+            handleCancel();
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [psg1, isOpen, isProcessing, purchaseState, hasJupiterMarket, psg1FocusIndex, handleCancel, handleConfirm, handleRetry]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -335,7 +428,7 @@ export function PurchaseModal({
                     <div className="mb-3">
                       <p className="text-sm text-gray-400 text-center mb-2">Select amount (USDC)</p>
                       <div className="grid grid-cols-4 gap-2">
-                        {PRESET_AMOUNTS.map((amount) => (
+                        {PRESET_AMOUNTS.map((amount, i) => (
                           <button
                             key={amount}
                             onClick={() => setSelectedAmount(amount)}
@@ -345,7 +438,7 @@ export function PurchaseModal({
                                   ? 'bg-green-500 text-white scale-105'
                                   : 'bg-red-500 text-white scale-105'
                                 : 'bg-white/10 text-white hover:bg-white/20'
-                            }`}
+                            } ${psg1 && psg1FocusIndex === i ? 'psg1-focus' : ''}`}
                           >
                             ${amount}
                           </button>
@@ -379,7 +472,7 @@ export function PurchaseModal({
                     <div className="flex gap-2">
                       <button
                         onClick={handleCancel}
-                        className="flex-1 py-2.5 rounded-lg bg-white/10 text-white font-bold hover:bg-white/20 transition-colors"
+                        className={`flex-1 py-2.5 rounded-lg bg-white/10 text-white font-bold hover:bg-white/20 transition-colors ${psg1 && psg1FocusIndex === PRESET_AMOUNTS.length ? 'psg1-focus' : ''}`}
                       >
                         Cancel
                       </button>
@@ -392,7 +485,7 @@ export function PurchaseModal({
                               ? 'bg-green-500 text-white hover:bg-green-600'
                               : 'bg-red-500 text-white hover:bg-red-600'
                             : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                        }`}
+                        } ${psg1 && psg1FocusIndex === PRESET_AMOUNTS.length + 1 ? 'psg1-focus' : ''}`}
                       >
                         {connected ? `Confirm $${selectedAmount || ''}` : `Connect & Buy $${selectedAmount || ''}`}
                       </button>
@@ -461,7 +554,7 @@ export function PurchaseModal({
 
                     <button
                       onClick={handleCancel}
-                      className="w-full py-2.5 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors"
+                      className={`w-full py-2.5 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors ${psg1 ? 'psg1-focus' : ''}`}
                     >
                       Done
                     </button>
@@ -492,13 +585,13 @@ export function PurchaseModal({
                     <div className="flex gap-2">
                       <button
                         onClick={handleCancel}
-                        className="flex-1 py-2.5 rounded-lg bg-white/10 text-white font-bold hover:bg-white/20 transition-colors"
+                        className={`flex-1 py-2.5 rounded-lg bg-white/10 text-white font-bold hover:bg-white/20 transition-colors ${psg1 && psg1FocusIndex === 0 ? 'psg1-focus' : ''}`}
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleRetry}
-                        className="flex-1 py-2.5 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors"
+                        className={`flex-1 py-2.5 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors ${psg1 && psg1FocusIndex === 1 ? 'psg1-focus' : ''}`}
                       >
                         Try Again
                       </button>

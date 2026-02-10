@@ -41,7 +41,7 @@ export default function ExplorePage() {
 
       {/* Grid */}
       <div className="pb-safe">
-        <ExploreGrid />
+        <ExploreGrid onBack={handleBack} />
       </div>
     </main>
   );

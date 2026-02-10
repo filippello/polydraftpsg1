@@ -10,6 +10,7 @@ import { useExploreStore } from '@/stores/explore';
 interface ExploreCardProps {
   market: ExploreMarket;
   index?: number;
+  focused?: boolean;
 }
 
 function getCategoryEmoji(category: string): string {
@@ -25,7 +26,7 @@ function getCategoryEmoji(category: string): string {
   return '🎯';
 }
 
-export function ExploreCard({ market, index = 0 }: ExploreCardProps) {
+export function ExploreCard({ market, index = 0, focused = false }: ExploreCardProps) {
   const pendingBets = useExploreStore((state) => state.pendingBets);
   const [imageError, setImageError] = useState(false);
   const hasValidImage = market.image_url && !imageError;
@@ -48,7 +49,7 @@ export function ExploreCard({ market, index = 0 }: ExploreCardProps) {
           </div>
         )}
 
-        <div className={`bg-card-bg border-balatro border-white/20 rounded-balatro-card overflow-hidden shadow-hard ${hasBets ? 'ring-2 ring-yellow-500/30' : ''}`}>
+        <div className={`bg-card-bg border-balatro border-white/20 rounded-balatro-card overflow-hidden shadow-hard ${hasBets ? 'ring-2 ring-yellow-500/30' : ''} ${focused ? 'psg1-focus scale-[1.03]' : ''}`}>
           {/* Image */}
           <div className="aspect-[4/3] w-full bg-game-secondary/50 flex items-center justify-center">
             {hasValidImage ? (
