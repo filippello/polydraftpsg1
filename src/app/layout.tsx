@@ -25,7 +25,6 @@ const vt323 = VT323({
 export const metadata: Metadata = {
   title: "Polydraft",
   description: "Fantasy betting with pixel art packs. Open packs, make picks, win points!",
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
