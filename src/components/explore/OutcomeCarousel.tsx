@@ -6,6 +6,7 @@ import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-m
 import type { ExploreMarket, ExploreOutcome } from '@/lib/jupiter/types';
 import { useExploreStore } from '@/stores/explore';
 import { isPSG1 } from '@/lib/platform';
+import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { PurchaseModal } from './PurchaseModal';
 import { ShareButton } from './ShareButton';
@@ -135,7 +136,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
     motionX: x,
   });
 
-  // Escape to go back (PSG1 only)
+  // Escape / Gamepad A to go back (PSG1 only)
   useEffect(() => {
     if (!psg1 || showPurchaseModal || hasFinished) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -144,8 +145,21 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
         onBack?.();
       }
     };
+    // Gamepad A polling for back
+    let rafId: number | null = null;
+    let prevA = false;
+    const pollBack = () => {
+      const aNow = isGamepadButtonPressed(GP.A);
+      if (aNow && !prevA) onBack?.();
+      prevA = aNow;
+      rafId = requestAnimationFrame(pollBack);
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(pollBack);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [psg1, showPurchaseModal, hasFinished, onBack]);
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -231,24 +245,24 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
   return (
     <div className={`flex-1 flex flex-col ${screenShake ? 'animate-screen-shake' : ''}`}>
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-white/10">
+      <div className={`flex items-center gap-2 border-b border-white/10 ${psg1 ? 'px-3 py-2' : 'p-4 gap-3'}`}>
         <button
           onClick={onBack}
-          className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+          className={`flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors ${psg1 ? 'w-8 h-8' : 'w-10 h-10'}`}
         >
-          <span className="text-lg">←</span>
+          <span className={psg1 ? 'text-sm' : 'text-lg'}>←</span>
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">{market.category}</p>
-          <p className="text-sm font-medium truncate">{market.title}</p>
+          {!psg1 && <p className="text-xs text-gray-500 uppercase tracking-wider">{market.category}</p>}
+          <p className={`font-medium truncate ${psg1 ? 'text-xs' : 'text-sm'}`}>{market.title}</p>
         </div>
         {/* Progress */}
-        <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg">
-          <span className="text-sm font-bold text-purple-400">
+        <div className={`flex items-center gap-1 bg-white/5 rounded-lg ${psg1 ? 'px-2 py-1' : 'px-3 py-1.5 gap-2'}`}>
+          <span className={`font-bold text-purple-400 ${psg1 ? 'text-xs' : 'text-sm'}`}>
             {currentOutcomeIndex + 1}
           </span>
-          <span className="text-xs text-gray-500">/</span>
-          <span className="text-sm text-gray-400">
+          <span className={`text-gray-500 ${psg1 ? 'text-[10px]' : 'text-xs'}`}>/</span>
+          <span className={`text-gray-400 ${psg1 ? 'text-xs' : 'text-sm'}`}>
             {outcomes.length}
           </span>
         </div>
@@ -390,14 +404,16 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
               </div>
 
               {/* Bottom info section */}
-              <div className="p-4">
-                <h2 className="text-xl font-bold text-center mb-2 font-pixel-body leading-tight">
+              <div className={psg1 ? "px-4 py-2" : "p-4"}>
+                <h2 className={`font-bold text-center mb-2 font-pixel-body leading-tight ${psg1 ? 'text-base' : 'text-xl'}`}>
                   {currentOutcome.label}
                 </h2>
 
-                <p className="text-4xl font-bold text-purple-400 font-pixel-heading text-center mb-3">
-                  {formatProbability(currentOutcome.probability)}
-                </p>
+                {!psg1 && (
+                  <p className="text-4xl font-bold text-purple-400 font-pixel-heading text-center mb-3">
+                    {formatProbability(currentOutcome.probability)}
+                  </p>
+                )}
 
                 {/* Swipe hints (mobile only, hidden on PSG1) */}
                 {!psg1 && (
@@ -416,19 +432,20 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                   </div>
                 )}
 
-                {/* PSG1 keyboard hints */}
+                {/* PSG1 button hints */}
                 {psg1 && (
-                  <div className="flex items-center justify-between text-sm pt-3 border-t border-white/10">
-                    <div className={`flex items-center gap-1 transition-colors ${chargeDirection === 'left' ? 'text-red-300' : 'text-red-400/60'}`}>
-                      <span className="text-xs font-mono">Hold</span>
-                      <span className="font-bold">← NO</span>
+                  <div className="flex items-center justify-between text-base pt-2 border-t border-white/10">
+                    <div className={`flex items-center gap-2 transition-colors ${chargeDirection === 'left' ? 'text-red-300' : 'text-red-400/60'}`}>
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">Y</span>
+                      <span className="font-bold text-lg">NO</span>
                     </div>
-                    <div className="text-gray-500 text-xs">
-                      ↓ PASS
+                    <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold text-gray-400">X</span>
+                      <span>PASS</span>
                     </div>
-                    <div className={`flex items-center gap-1 transition-colors ${chargeDirection === 'right' ? 'text-green-300' : 'text-green-400/60'}`}>
-                      <span className="font-bold">YES →</span>
-                      <span className="text-xs font-mono">Hold</span>
+                    <div className={`flex items-center gap-2 transition-colors ${chargeDirection === 'right' ? 'text-green-300' : 'text-green-400/60'}`}>
+                      <span className="font-bold text-lg">YES</span>
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">B</span>
                     </div>
                   </div>
                 )}
@@ -447,8 +464,8 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                   </div>
                 )}
 
-                {/* Pick buttons (desktop / PSG1) */}
-                <div className={`${psg1 ? 'flex' : 'hidden md:flex'} gap-2 pt-3 border-t border-white/10`} onPointerDownCapture={(e) => e.stopPropagation()}>
+                {/* Pick buttons (desktop only, hidden on PSG1) */}
+                <div className={`${psg1 ? 'hidden' : 'hidden md:flex'} gap-2 pt-3 border-t border-white/10`} onPointerDownCapture={(e) => e.stopPropagation()}>
                   <button onClick={handleNo} className={`flex-1 rounded-lg border font-bold transition-colors ${psg1 ? 'py-3 text-base' : 'py-2 text-sm'} ${
                     chargeDirection === 'left'
                       ? 'bg-red-500/40 border-red-400 text-red-300 animate-pulse'

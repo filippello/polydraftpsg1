@@ -3,6 +3,7 @@
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { PackList } from '@/components/packs';
+import { isPSG1 } from '@/lib/platform';
 import { usePackSummaries, useTotalPendingReveals } from '@/stores';
 
 export default function MyPacksPage() {
@@ -10,7 +11,7 @@ export default function MyPacksPage() {
   const pendingReveals = useTotalPendingReveals();
 
   return (
-    <main className="min-h-screen min-h-dvh bg-game-bg pb-24">
+    <main className={`min-h-screen min-h-dvh bg-game-bg pb-24 ${isPSG1() ? 'pl-20' : ''}`}>
       <Header />
 
       {/* Page Header */}

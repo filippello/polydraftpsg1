@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Press_Start_2P, VT323 } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { getActiveVenue } from "@/lib/adapters/config";
-import { isPSG1 } from "@/lib/platform";
+import { isPSG1, isTestDevice, TEST_DEVICE } from "@/lib/platform";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -34,8 +34,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = isPSG1()
   ? {
-      width: 1240,
-      height: 1080,
+      // Test device (e.g. Retroid Pocket 5): use native resolution, content centers via max-w
+      // PSG1 hardware: fixed 1240x1080
+      width: isTestDevice() ? 'device-width' : 1240,
+      height: isTestDevice() ? undefined : 1080,
       initialScale: 1,
       maximumScale: 1,
       userScalable: false,
@@ -68,14 +70,37 @@ export default function RootLayout({
       >
         <Providers>
           {/* Balatro post-processing effects wrapper */}
-          <div className="min-h-screen min-h-dvh flex flex-col balatro-noise balatro-vignette balatro-scanlines">
-            <div className={isPSG1()
-              ? "w-full max-w-[1240px] h-screen mx-auto relative flex flex-col overflow-hidden pl-20"
-              : "w-full max-w-[430px] mx-auto relative min-h-screen min-h-dvh flex flex-col md:my-4 md:rounded-2xl md:overflow-hidden md:shadow-2xl md:shadow-black/50 md:border md:border-white/10"
-            }>
+          <div className={`min-h-screen min-h-dvh flex flex-col balatro-noise balatro-vignette balatro-scanlines${isPSG1() && isTestDevice() ? ' items-center justify-center' : ''}`}>
+            <div
+              className={
+                isPSG1() && isTestDevice()
+                  ? "relative flex flex-col overflow-hidden"
+                  : isPSG1()
+                    ? "w-full max-w-[1240px] h-screen mx-auto relative flex flex-col overflow-hidden"
+                    : "w-full max-w-[430px] mx-auto relative min-h-screen min-h-dvh flex flex-col md:my-4 md:rounded-2xl md:overflow-hidden md:shadow-2xl md:shadow-black/50 md:border md:border-white/10"
+              }
+              style={isPSG1() && isTestDevice() ? {
+                aspectRatio: '1240 / 1080',
+                width: 'min(100vw, calc(100vh * 1240 / 1080))',
+                maxWidth: '1240px',
+                maxHeight: '1080px',
+                border: '1px solid rgba(74,222,128,0.4)',
+                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4), 0 0 8px rgba(74,222,128,0.15)',
+              } : undefined}
+            >
               {children}
             </div>
           </div>
+          {isPSG1() && isTestDevice() && (
+            <div style={{
+              position: 'fixed', bottom: 4, right: 4,
+              fontSize: 10, padding: '2px 6px',
+              background: 'rgba(0,0,0,0.7)', color: '#4ade80',
+              borderRadius: 4, fontFamily: 'monospace', zIndex: 99999,
+            }}>
+              TEST:{TEST_DEVICE} | PSG1
+            </div>
+          )}
         </Providers>
       </body>
     </html>

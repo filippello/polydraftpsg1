@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { useSessionStore } from '@/stores';
+import { isPSG1 } from '@/lib/platform';
 
 export default function ProfilePage() {
   const profile = useSessionStore((state) => state.profile);
@@ -65,7 +66,7 @@ export default function ProfilePage() {
   const displayName = profile?.display_name ?? profile?.username ?? 'Anonymous Player';
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen">
+    <main className={`flex-1 flex flex-col min-h-screen ${isPSG1() ? 'pl-20' : ''}`}>
       <Header />
 
       <div className="flex-1 flex flex-col p-4 pb-20">

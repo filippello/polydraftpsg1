@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { PackSprite } from '@/components/sprites/PackSprite';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { isPSG1 } from '@/lib/platform';
 import { PackListItem } from '@/components/packs';
 import { useSessionStore, usePackSummaries, useTotalPendingReveals } from '@/stores';
 
@@ -90,7 +91,7 @@ export default function GameHomePage() {
   };
 
   return (
-    <main className="flex-1 flex flex-col">
+    <main className={`flex-1 flex flex-col ${isPSG1() ? 'pl-20' : ''}`}>
       <Header />
 
       <div className="flex-1 flex flex-col items-center justify-center p-4 pb-20">
