@@ -60,31 +60,31 @@ export function usePSG1Navigation({
     [itemCount, wrap]
   );
 
-  // Original keyboard handler (unchanged)
+  // Keyboard handler
   useEffect(() => {
-    if (!enabled || itemCount <= 0) return;
+    if (!enabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          move(columns === 1 ? -1 : -columns);
+          if (itemCount > 0) move(columns === 1 ? -1 : -columns);
           break;
         case 'ArrowDown':
           e.preventDefault();
-          move(columns === 1 ? 1 : columns);
+          if (itemCount > 0) move(columns === 1 ? 1 : columns);
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          if (columns > 1) move(-1);
+          if (itemCount > 0 && columns > 1) move(-1);
           break;
         case 'ArrowRight':
           e.preventDefault();
-          if (columns > 1) move(1);
+          if (itemCount > 0 && columns > 1) move(1);
           break;
         case 'Enter':
           e.preventDefault();
-          onSelect?.(focusedIndex);
+          if (itemCount > 0) onSelect?.(focusedIndex);
           break;
         case 'Escape':
           e.preventDefault();
@@ -108,7 +108,7 @@ export function usePSG1Navigation({
   columnsRef.current = columns;
 
   useEffect(() => {
-    if (!enabled || itemCount <= 0) return;
+    if (!enabled) return;
 
     let rafId: number | null = null;
     // Snapshot current button state so a held button from a previous
@@ -126,15 +126,17 @@ export function usePSG1Navigation({
       const aNow = isGamepadButtonPressed(GP.A);
       const dpad = getDpadDirection();
 
-      if (bNow && !prevB) onSelect?.(focusedIndexRef.current);
+      if (bNow && !prevB && itemCount > 0) onSelect?.(focusedIndexRef.current);
       if (aNow && !prevA) onBack?.();
 
-      // D-pad navigation (edge detection, same logic as keyboard handler)
-      const cols = columnsRef.current;
-      if (dpad.up && !prevUp) moveRef.current(cols === 1 ? -1 : -cols);
-      if (dpad.down && !prevDown) moveRef.current(cols === 1 ? 1 : cols);
-      if (dpad.left && !prevLeft && cols > 1) moveRef.current(-1);
-      if (dpad.right && !prevRight && cols > 1) moveRef.current(1);
+      // D-pad navigation (only when there are items to navigate)
+      if (itemCount > 0) {
+        const cols = columnsRef.current;
+        if (dpad.up && !prevUp) moveRef.current(cols === 1 ? -1 : -cols);
+        if (dpad.down && !prevDown) moveRef.current(cols === 1 ? 1 : cols);
+        if (dpad.left && !prevLeft && cols > 1) moveRef.current(-1);
+        if (dpad.right && !prevRight && cols > 1) moveRef.current(1);
+      }
 
       prevB = bNow;
       prevA = aNow;

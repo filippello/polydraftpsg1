@@ -27,7 +27,7 @@ export default function MyPacksPage() {
   }, [router]);
 
   const { focusedIndex } = usePSG1Navigation({
-    enabled: psg1 && packSummaries.length > 0,
+    enabled: psg1,
     itemCount: packSummaries.length,
     onSelect: handleNavSelect,
     onBack: handleNavBack,
