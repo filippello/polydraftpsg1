@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,8 @@ import { RevealAnimation } from '@/components/animations/RevealAnimation';
 import { PackSummary } from '@/components/game/PackSummary';
 import { useMyPacksStore, useStoredPack, useSessionStore, usePackSummaries } from '@/stores';
 import { useEventSync } from '@/hooks/useEventSync';
+import { isPSG1 } from '@/lib/platform';
+import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
 import type { UserPick, Event } from '@/types';
 
 export default function QueuePage({ params }: { params: { packId: string } }) {
@@ -172,6 +174,44 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
     });
   }, [packId, updatePick]);
 
+  // PSG1 navigation for pick cards
+  const psg1 = isPSG1();
+
+  const handleNavSelect = useCallback((index: number) => {
+    const pick = picks[index];
+    if (pick && pick.is_resolved && !pick.reveal_animation_played && index === currentRevealIndex) {
+      setIsRevealing(true);
+      setRevealingPick(pick);
+    }
+  }, [picks, currentRevealIndex]);
+
+  const handleNavBack = useCallback(() => {
+    router.push(psg1 ? '/game' : '/my-packs');
+  }, [router, psg1]);
+
+  const { focusedIndex, setFocusedIndex } = usePSG1Navigation({
+    enabled: psg1 && !isRevealing && !showSummary && picks.length > 0,
+    itemCount: picks.length,
+    onSelect: handleNavSelect,
+    onBack: handleNavBack,
+    initialIndex: 0,
+  });
+
+  // Auto-focus on next revealable pick when currentRevealIndex changes
+  useEffect(() => {
+    if (psg1 && currentRevealIndex < picks.length) {
+      setFocusedIndex(currentRevealIndex);
+    }
+  }, [psg1, currentRevealIndex, picks.length, setFocusedIndex]);
+
+  // Auto-scroll focused item into view
+  const focusedCardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (psg1 && focusedCardRef.current) {
+      focusedCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [psg1, focusedIndex]);
+
   // Show not found state
   if (!isLoading && !storedPack) {
     return (
@@ -222,43 +262,72 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
   return (
     <main className="min-h-screen bg-game-bg flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-game-bg/95 backdrop-blur-sm border-b border-card-border p-4">
-        <div className="flex items-center justify-between">
-          <Link href="/my-packs" className="text-gray-400 hover:text-white">
-            ← My Packs
-          </Link>
-          <h1 className="font-bold">Your Queue</h1>
-          <div className="w-12" /> {/* Spacer */}
-        </div>
-      </header>
-
-      {/* Stats Bar */}
-      <div className="p-4 border-b border-card-border">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="text-xs text-gray-400">Progress</p>
-            <p className="text-lg font-bold">
-              {resolvedCount}/{picks.length} revealed
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-400">USD</p>
-            <p className="text-lg font-bold text-game-gold">
+      {psg1 ? (
+        <div className="sticky top-0 z-40 bg-game-bg/95 backdrop-blur-sm border-b border-white/10">
+          <div className="flex items-center gap-3 p-4">
+            <button
+              onClick={handleNavBack}
+              className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <span className="text-lg">←</span>
+            </button>
+            <motion.h1
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-xl font-bold font-pixel-heading"
+            >
+              YOUR QUEUE
+            </motion.h1>
+            <div className="flex-1" />
+            <span className="text-xs text-gray-400">
+              {resolvedCount}/{picks.length}
+            </span>
+            <span className="text-xs text-game-gold">
               ${totalPoints.toFixed(2)}
-            </p>
+            </span>
           </div>
         </div>
+      ) : (
+        <>
+          <header className="sticky top-0 z-40 bg-game-bg/95 backdrop-blur-sm border-b border-card-border p-4">
+            <div className="flex items-center justify-between">
+              <Link href="/my-packs" className="text-gray-400 hover:text-white">
+                ← My Packs
+              </Link>
+              <h1 className="font-bold">Your Queue</h1>
+              <div className="w-12" /> {/* Spacer */}
+            </div>
+          </header>
 
-        {/* Progress bar */}
-        <div className="mt-3 h-2 bg-card-border rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-game-gold"
-            initial={{ width: 0 }}
-            animate={{ width: `${(resolvedCount / picks.length) * 100}%` }}
-            transition={{ duration: 0.5 }}
-          />
-        </div>
-      </div>
+          {/* Stats Bar */}
+          <div className="p-4 border-b border-card-border">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs text-gray-400">Progress</p>
+                <p className="text-lg font-bold">
+                  {resolvedCount}/{picks.length} revealed
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-400">USD</p>
+                <p className="text-lg font-bold text-game-gold">
+                  ${totalPoints.toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mt-3 h-2 bg-card-border rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-game-gold"
+                initial={{ width: 0 }}
+                animate={{ width: `${(resolvedCount / picks.length) * 100}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Pack complete indicator (shows when summary is dismissed) */}
       {currentRevealIndex >= picks.length && !showSummary && (
@@ -287,15 +356,20 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
       <div className="flex-1 p-4 pb-24">
         <div className="space-y-3 max-w-md mx-auto">
           {picks.map((pick, index) => (
-            <QueueCard
+            <div
               key={pick.id}
-              pick={pick}
-              position={index + 1}
-              isRevealed={pick.reveal_animation_played}
-              isNext={index === currentRevealIndex}
-              isLocked={index > currentRevealIndex}
-              onReveal={index === currentRevealIndex ? handleReveal : undefined}
-            />
+              ref={psg1 && focusedIndex === index ? focusedCardRef : undefined}
+            >
+              <QueueCard
+                pick={pick}
+                position={index + 1}
+                isRevealed={pick.reveal_animation_played}
+                isNext={index === currentRevealIndex}
+                isLocked={index > currentRevealIndex}
+                onReveal={index === currentRevealIndex ? handleReveal : undefined}
+                focused={psg1 && focusedIndex === index}
+              />
+            </div>
           ))}
 
           {/* Open Another Pack CTA */}

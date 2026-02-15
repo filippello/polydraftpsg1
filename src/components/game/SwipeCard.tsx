@@ -18,9 +18,13 @@ interface SwipeCardProps {
   total: number;
   onSwipe: (outcome: Outcome) => void;
   isTop: boolean;
+  psg1Mode?: boolean;
+  chargeDirection?: 'left' | 'right' | null;
+  chargeProgress?: number;
 }
 
-export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardProps) {
+export function SwipeCard({ event, position, total, onSwipe, isTop, psg1Mode, chargeDirection, chargeProgress }: SwipeCardProps) {
+  console.log('[SwipeCard] event.image_url:', event.image_url);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | 'up' | 'down' | null>(null);
 
   const x = useMotionValue(0);
@@ -83,7 +87,7 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
     <motion.div
       className={`absolute inset-0 ${isTop ? 'z-10' : 'z-0'}`}
       style={{ x, y, rotate, opacity }}
-      drag={isTop ? (event.supports_draw ? true : 'x') : false}
+      drag={psg1Mode ? false : (isTop ? (event.supports_draw ? true : 'x') : false)}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.9}
       onDragEnd={handleDragEnd}
@@ -97,7 +101,7 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
               ? { y: 500, opacity: 0 }
               : exitDirection === 'up'
                 ? { y: -500, opacity: 0 }
-                : { scale: isTop ? 1 : 0.95, y: isTop ? 0 : 10 }
+                : { scale: isTop ? 1 + (psg1Mode ? (chargeProgress ?? 0) * 0.07 : 0) : 0.95, y: isTop ? 0 : 10 }
       }
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
@@ -145,29 +149,55 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
           </motion.div>
         )}
 
+        {/* Charge glow overlay (PSG1 only) */}
+        {psg1Mode && chargeDirection && (
+          <div
+            className="absolute inset-0 pointer-events-none z-20 rounded-balatro-card"
+            style={{
+              boxShadow: [
+                `inset 0 0 ${60 * (chargeProgress ?? 0)}px ${20 * (chargeProgress ?? 0)}px ${
+                  chargeDirection === 'right'
+                    ? `rgba(59, 130, 246, ${(chargeProgress ?? 0) * 0.7})`
+                    : `rgba(239, 68, 68, ${(chargeProgress ?? 0) * 0.7})`
+                }`,
+                `0 0 ${40 * (chargeProgress ?? 0)}px ${15 * (chargeProgress ?? 0)}px ${
+                  chargeDirection === 'right'
+                    ? `rgba(59, 130, 246, ${(chargeProgress ?? 0) * 0.5})`
+                    : `rgba(239, 68, 68, ${(chargeProgress ?? 0) * 0.5})`
+                }`,
+              ].join(', '),
+              border: `${2 + (chargeProgress ?? 0) * 2}px solid ${
+                chargeDirection === 'right'
+                  ? `rgba(59, 130, 246, ${(chargeProgress ?? 0) * 0.8})`
+                  : `rgba(239, 68, 68, ${(chargeProgress ?? 0) * 0.8})`
+              }`,
+            }}
+          />
+        )}
+
         {/* Card content */}
         <div className="h-full flex flex-col">
           {/* Floating Header over image */}
-          <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
+          <div className={`absolute top-0 left-0 right-0 z-20 ${psg1Mode ? 'p-2' : 'p-4'} flex items-center justify-between`}>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] px-3 py-2 bg-black/70 backdrop-blur-sm rounded-lg uppercase font-bold text-white shadow-hard-sm font-pixel-heading">
+              <span className={`${psg1Mode ? 'text-[8px] px-2 py-1' : 'text-[10px] px-3 py-2'} bg-black/70 backdrop-blur-sm rounded-lg uppercase font-bold text-white shadow-hard-sm font-pixel-heading`}>
                 {event.subcategory || event.category}
               </span>
               {/* Rarity badge */}
               <span
-                className="text-[10px] px-3 py-2 rounded-lg uppercase font-bold text-white shadow-hard-sm font-pixel-heading"
+                className={`${psg1Mode ? 'text-[8px] px-2 py-1' : 'text-[10px] px-3 py-2'} rounded-lg uppercase font-bold text-white shadow-hard-sm font-pixel-heading`}
                 style={{ backgroundColor: rarityConfig.hex }}
               >
                 {rarityConfig.name}
               </span>
             </div>
-            <span className="text-base text-white bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-hard-sm font-bold font-pixel-body">
+            <span className={`${psg1Mode ? 'text-xs px-2 py-1' : 'text-base px-3 py-1.5'} text-white bg-black/70 backdrop-blur-sm rounded-lg shadow-hard-sm font-bold font-pixel-body`}>
               {position}/{total}
             </span>
           </div>
 
-          {/* Image area with 16:10 aspect ratio */}
-          <div className="relative w-full aspect-[16/10] overflow-hidden">
+          {/* Image area */}
+          <div className={`relative w-full ${psg1Mode ? 'h-[30%]' : 'aspect-[16/10]'} overflow-hidden`}>
             {event.image_url ? (
               <Image
                 src={event.image_url}
@@ -196,9 +226,9 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
           </div>
 
           {/* Information panel */}
-          <div className="flex-1 flex flex-col p-4 bg-card-bg/95">
+          <div className={`flex-1 flex flex-col ${psg1Mode ? 'p-2' : 'p-4'} bg-card-bg/95`}>
             {/* Title */}
-            <h2 className="text-xl font-bold mb-4 leading-tight text-center font-pixel-body">
+            <h2 className={`${psg1Mode ? 'text-base mb-1' : 'text-xl mb-4'} font-bold leading-tight text-center font-pixel-body`}>
               {isVsMatch ? `${event.outcome_b_label} vs ${event.outcome_a_label}` : event.title}
             </h2>
 
@@ -209,23 +239,23 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
                   <div className="flex items-center justify-center gap-4">
                     {/* Team B - Left (swipe left = B) */}
                     <div className="flex-1 text-right">
-                      <p className="font-bold text-xl font-pixel-body text-outcome-b">
+                      <p className={`font-bold ${psg1Mode ? 'text-base' : 'text-xl'} font-pixel-body text-outcome-b`}>
                         {event.outcome_b_label}
                       </p>
-                      <p className="text-2xl font-pixel-body text-white mt-1">
+                      <p className={`${psg1Mode ? 'text-lg' : 'text-2xl'} font-pixel-body text-white mt-1`}>
                         {formatProbability(event.outcome_b_probability)}
                       </p>
                     </div>
 
                     {/* VS */}
-                    <div className="text-3xl font-bold text-gray-500 font-pixel-heading">VS</div>
+                    <div className={`${psg1Mode ? 'text-xl' : 'text-3xl'} font-bold text-gray-500 font-pixel-heading`}>VS</div>
 
                     {/* Team A - Right (swipe right = A) */}
                     <div className="flex-1 text-left">
-                      <p className="font-bold text-xl font-pixel-body text-outcome-a">
+                      <p className={`font-bold ${psg1Mode ? 'text-base' : 'text-xl'} font-pixel-body text-outcome-a`}>
                         {event.outcome_a_label}
                       </p>
-                      <p className="text-2xl font-pixel-body text-white mt-1">
+                      <p className={`${psg1Mode ? 'text-lg' : 'text-2xl'} font-pixel-body text-white mt-1`}>
                         {formatProbability(event.outcome_a_probability)}
                       </p>
                     </div>
@@ -241,19 +271,19 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-8">
+                <div className={`flex items-center ${psg1Mode ? 'gap-6' : 'gap-8'}`}>
                   {/* NO - Left (swipe left = B) */}
                   <div className="text-center">
-                    <p className="font-bold text-2xl text-red-500 font-pixel-heading">NO</p>
-                    <p className="text-2xl text-white mt-1 font-pixel-body">
+                    <p className={`font-bold ${psg1Mode ? 'text-lg' : 'text-2xl'} text-red-500 font-pixel-heading`}>NO</p>
+                    <p className={`${psg1Mode ? 'text-lg' : 'text-2xl'} text-white mt-1 font-pixel-body`}>
                       {formatProbability(event.outcome_b_probability)}
                     </p>
                   </div>
 
                   {/* YES - Right (swipe right = A) */}
                   <div className="text-center">
-                    <p className="font-bold text-2xl text-green-500 font-pixel-heading">YES</p>
-                    <p className="text-2xl text-white mt-1 font-pixel-body">
+                    <p className={`font-bold ${psg1Mode ? 'text-lg' : 'text-2xl'} text-green-500 font-pixel-heading`}>YES</p>
+                    <p className={`${psg1Mode ? 'text-lg' : 'text-2xl'} text-white mt-1 font-pixel-body`}>
                       {formatProbability(event.outcome_a_probability)}
                     </p>
                   </div>
@@ -261,27 +291,63 @@ export function SwipeCard({ event, position, total, onSwipe, isTop }: SwipeCardP
               )}
             </div>
 
-            {/* Swipe hints (mobile only) */}
-            <div className="flex md:hidden flex-col gap-2 text-sm pt-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-outcome-b">
-                  <span>←</span>
-                  <span className="font-bold">{event.outcome_b_label}</span>
+            {/* Swipe hints (mobile only, hidden on PSG1) */}
+            {!psg1Mode && (
+              <div className="flex md:hidden flex-col gap-2 text-sm pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-outcome-b">
+                    <span>←</span>
+                    <span className="font-bold">{event.outcome_b_label}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-outcome-a">
+                    <span className="font-bold">{event.outcome_a_label}</span>
+                    <span>→</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-outcome-a">
-                  <span className="font-bold">{event.outcome_a_label}</span>
-                  <span>→</span>
+                {event.supports_draw && (
+                  <div className="flex justify-center text-gray-400">
+                    <span>↑↓ {event.outcome_draw_label || 'Draw'}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PSG1 button hints */}
+            {psg1Mode && (
+              <div className="flex items-center justify-between text-base pt-2 border-t border-white/10">
+                <div className={`flex items-center gap-2 transition-colors ${chargeDirection === 'left' ? 'text-outcome-b' : 'text-outcome-b/60'}`}>
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">Y</span>
+                  <span className="font-bold text-sm">{event.outcome_b_label}</span>
+                </div>
+                {event.supports_draw && (
+                  <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold text-gray-400">X</span>
+                    <span>{event.outcome_draw_label || 'Draw'}</span>
+                  </div>
+                )}
+                <div className={`flex items-center gap-2 transition-colors ${chargeDirection === 'right' ? 'text-outcome-a' : 'text-outcome-a/60'}`}>
+                  <span className="font-bold text-sm">{event.outcome_a_label}</span>
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">B</span>
                 </div>
               </div>
-              {event.supports_draw && (
-                <div className="flex justify-center text-gray-400">
-                  <span>↑↓ {event.outcome_draw_label || 'Draw'}</span>
-                </div>
-              )}
-            </div>
+            )}
 
-            {/* Pick buttons (desktop only) */}
-            <div className="hidden md:flex gap-2 pt-2" onPointerDownCapture={(e) => e.stopPropagation()}>
+            {/* Charge progress bar (PSG1 only) */}
+            {psg1Mode && chargeDirection && (
+              <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-none ${
+                    chargeDirection === 'right'
+                      ? 'bg-outcome-a shadow-[0_0_8px_rgba(59,130,246,0.6)]'
+                      : 'bg-outcome-b shadow-[0_0_8px_rgba(239,68,68,0.6)] ml-auto'
+                  }`}
+                  style={{ width: `${(chargeProgress ?? 0) * 100}%` }}
+                />
+              </div>
+            )}
+
+            {/* Pick buttons (desktop only, hidden on PSG1) */}
+            <div className={`${psg1Mode ? 'hidden' : 'hidden md:flex'} gap-2 pt-2`} onPointerDownCapture={(e) => e.stopPropagation()}>
               <button onClick={() => handlePick('b')} className="flex-1 py-2 rounded-lg bg-outcome-b/20 border border-outcome-b/50 text-outcome-b font-bold text-sm hover:bg-outcome-b/30 transition-colors">
                 {event.outcome_b_label}
               </button>

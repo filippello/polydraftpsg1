@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VictoryConfetti } from '../animations/Confetti';
 import { GoldCoinBurst, TrophyBurst } from '../animations/CoinBurst';
+import { isPSG1 } from '@/lib/platform';
+import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
+import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
 
 interface PackSummaryProps {
   correctCount: number;
@@ -122,6 +125,50 @@ export function PackSummary({
     }
     // In summary phase, tap doesn't auto-close (user should use buttons)
   }, [canSkip, phase]);
+
+  // PSG1 support
+  const psg1 = isPSG1();
+
+  // PSG1: B button to skip celebration phase
+  useEffect(() => {
+    if (!psg1 || phase !== 'celebration') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') { e.preventDefault(); setPhase('summary'); }
+    };
+    let rafId: number | null = null;
+    let prevB = false;
+    const poll = () => {
+      const bNow = isGamepadButtonPressed(GP.B);
+      if (bNow && !prevB) setPhase('summary');
+      prevB = bNow;
+      rafId = requestAnimationFrame(poll);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, phase]);
+
+  // PSG1 navigation for CTA buttons in summary phase (0=View My Packs, 1=Open Another)
+  const handleCTASelect = useCallback((index: number) => {
+    if (index === 0) onClose();
+    else onOpenAnother();
+  }, [onClose, onOpenAnother]);
+
+  const handleCTABack = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const { focusedIndex: ctaFocusedIndex } = usePSG1Navigation({
+    enabled: psg1 && phase === 'summary',
+    itemCount: 2,
+    columns: 2,
+    onSelect: handleCTASelect,
+    onBack: handleCTABack,
+    initialIndex: 1, // Default to "Open Another"
+  });
 
   return (
     <motion.div
@@ -338,7 +385,7 @@ export function PackSummary({
             >
               <motion.button
                 onClick={onClose}
-                className="flex-1 py-3 px-4 bg-game-primary border-2 border-card-border rounded-xl font-bold text-white hover:bg-game-primary/80 transition-colors"
+                className={`flex-1 py-3 px-4 bg-game-primary border-2 border-card-border rounded-xl font-bold text-white hover:bg-game-primary/80 transition-colors ${psg1 && ctaFocusedIndex === 0 ? 'psg1-focus' : ''}`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -346,13 +393,23 @@ export function PackSummary({
               </motion.button>
               <motion.button
                 onClick={onOpenAnother}
-                className="flex-1 py-3 px-4 bg-gradient-to-r from-game-gold to-yellow-500 rounded-xl font-bold text-black hover:from-yellow-400 hover:to-yellow-500 transition-colors"
+                className={`flex-1 py-3 px-4 bg-gradient-to-r from-game-gold to-yellow-500 rounded-xl font-bold text-black hover:from-yellow-400 hover:to-yellow-500 transition-colors ${psg1 && ctaFocusedIndex === 1 ? 'psg1-focus' : ''}`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 Open Another
               </motion.button>
             </motion.div>
+            {psg1 && (
+              <motion.p
+                className="mt-3 text-xs text-gray-500"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5 * d }}
+              >
+                [A] My Packs  [B] Open Another
+              </motion.p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -366,7 +423,7 @@ export function PackSummary({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            Tap to skip
+            {psg1 ? '[B] Skip' : 'Tap to skip'}
           </motion.p>
         )}
       </AnimatePresence>

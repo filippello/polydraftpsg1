@@ -11,7 +11,7 @@ import type { UserPack, UserPick, Outcome } from '@/types';
 // Constants
 // ============================================
 
-export const WEEKLY_PACK_LIMIT = 2;
+export const WEEKLY_PACK_LIMIT = 99;
 
 // ============================================
 // Week Calculations

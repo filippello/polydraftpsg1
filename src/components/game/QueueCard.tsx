@@ -11,6 +11,7 @@ interface QueueCardProps {
   isNext: boolean;
   isLocked: boolean;
   onReveal?: () => void;
+  focused?: boolean;
 }
 
 export function QueueCard({
@@ -20,6 +21,7 @@ export function QueueCard({
   isNext,
   isLocked,
   onReveal,
+  focused,
 }: QueueCardProps) {
   const pickedLabel =
     pick.picked_outcome === 'a'
@@ -68,7 +70,7 @@ export function QueueCard({
   if (isChestReady) {
     return (
       <motion.div
-        className={`rounded-xl border-2 ${stateClasses} overflow-hidden`}
+        className={`rounded-xl border-2 ${stateClasses} overflow-hidden ${focused ? 'psg1-focus' : ''}`}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: position * 0.1 }}
@@ -174,6 +176,9 @@ export function QueueCard({
               <span>✨</span>
             </span>
           </motion.button>
+          {focused && (
+            <p className="mt-2 text-xs text-gray-500">[B] Reveal</p>
+          )}
         </div>
       </motion.div>
     );
@@ -182,7 +187,7 @@ export function QueueCard({
   // Default card state (pending, locked, revealed)
   return (
     <motion.div
-      className={`p-3 rounded border-2 ${stateClasses} transition-all`}
+      className={`p-3 rounded border-2 ${stateClasses} transition-all ${focused ? 'psg1-focus' : ''}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: position * 0.1 }}

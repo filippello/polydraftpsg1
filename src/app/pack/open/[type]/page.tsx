@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { PackSprite } from '@/components/sprites/PackSprite';
@@ -17,6 +17,9 @@ import {
   getEventRarity,
   getRarityConfig,
 } from '@/lib/rarity';
+import { isPSG1 } from '@/lib/platform';
+import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
+import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
 
 type Phase = 'checking' | 'loading' | 'opening' | 'revealing' | 'swiping' | 'confirming' | 'blocked' | 'error';
@@ -143,7 +146,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     }
   }, [phase, revealedCards]);
 
-  const handleSwipe = (outcome: Outcome) => {
+  const handleSwipe = useCallback((outcome: Outcome) => {
     const event = events[currentIndex];
 
     // Save pick
@@ -157,7 +160,153 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       // All picked - go to confirming
       setTimeout(() => setPhase('confirming'), 300);
     }
-  };
+  }, [currentIndex, events, setDraftPick]);
+
+  // PSG1 gamepad support for swiping phase
+  const psg1 = isPSG1();
+  const swipeX = useMotionValue(0);
+
+  const handleSwipeA = useCallback(() => handleSwipe('a'), [handleSwipe]);
+  const handleSwipeB = useCallback(() => handleSwipe('b'), [handleSwipe]);
+  const handleSwipeDraw = useCallback(() => handleSwipe('draw'), [handleSwipe]);
+
+  const { chargeDirection, chargeProgress } = useHoldToConfirm({
+    enabled: psg1 && phase === 'swiping',
+    onYes: handleSwipeA,
+    onNo: handleSwipeB,
+    onPass: handleSwipeDraw,
+    motionX: swipeX,
+  });
+
+  // Escape / Gamepad A to go back (PSG1, swiping phase)
+  useEffect(() => {
+    if (!psg1 || phase !== 'swiping') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        router.push('/game');
+      }
+    };
+    let rafId: number | null = null;
+    let prevA = false;
+    const pollBack = () => {
+      const aNow = isGamepadButtonPressed(GP.A);
+      if (aNow && !prevA) router.push('/game');
+      prevA = aNow;
+      rafId = requestAnimationFrame(pollBack);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(pollBack);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, phase, router]);
+
+  // PSG1 gamepad/keyboard for opening phase (B/Enter → open, A/Escape → back)
+  useEffect(() => {
+    if (!psg1 || phase !== 'opening') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') { e.preventDefault(); handleOpenPack(); }
+      if (e.key === 'Escape') { e.preventDefault(); router.push('/game'); }
+    };
+    let rafId: number | null = null;
+    let prevB = false;
+    let prevA = false;
+    const poll = () => {
+      const bNow = isGamepadButtonPressed(GP.B);
+      const aNow = isGamepadButtonPressed(GP.A);
+      if (bNow && !prevB) handleOpenPack();
+      if (aNow && !prevA) router.push('/game');
+      prevB = bNow;
+      prevA = aNow;
+      rafId = requestAnimationFrame(poll);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, phase, router]);
+
+  // PSG1 gamepad/keyboard for revealing phase (B → skip to swiping)
+  useEffect(() => {
+    if (!psg1 || phase !== 'revealing') return;
+    const skipToSwiping = () => {
+      setRevealedCards(events.map((_, i) => i));
+      setPhase('swiping');
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') { e.preventDefault(); skipToSwiping(); }
+    };
+    let rafId: number | null = null;
+    let prevB = false;
+    const poll = () => {
+      const bNow = isGamepadButtonPressed(GP.B);
+      if (bNow && !prevB) skipToSwiping();
+      prevB = bNow;
+      rafId = requestAnimationFrame(poll);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, phase, events]);
+
+  // PSG1 gamepad/keyboard for confirming phase (B/Enter → Let's Go, A/Escape → back)
+  useEffect(() => {
+    if (!psg1 || phase !== 'confirming') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') { e.preventDefault(); handleLetsGo(); }
+      if (e.key === 'Escape') { e.preventDefault(); router.push('/game'); }
+    };
+    let rafId: number | null = null;
+    let prevB = false;
+    let prevA = false;
+    const poll = () => {
+      const bNow = isGamepadButtonPressed(GP.B);
+      const aNow = isGamepadButtonPressed(GP.A);
+      if (bNow && !prevB) handleLetsGo();
+      if (aNow && !prevA) router.push('/game');
+      prevB = bNow;
+      prevA = aNow;
+      rafId = requestAnimationFrame(poll);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, phase, router]);
+
+  // PSG1 gamepad/keyboard for blocked/error phases (B/Enter → primary, A/Escape → back)
+  useEffect(() => {
+    if (!psg1 || (phase !== 'blocked' && phase !== 'error')) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); router.push('/'); }
+    };
+    let rafId: number | null = null;
+    let prevB = false;
+    let prevA = false;
+    const poll = () => {
+      const bNow = isGamepadButtonPressed(GP.B);
+      const aNow = isGamepadButtonPressed(GP.A);
+      if ((bNow && !prevB) || (aNow && !prevA)) router.push('/');
+      prevB = bNow;
+      prevA = aNow;
+      rafId = requestAnimationFrame(poll);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, phase, router]);
 
   // Sync pack to database
   const syncPackToDb = useCallback(async (
@@ -443,7 +592,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              Tap to Open
+              {psg1 ? 'Press \u24B7 to Open' : 'Tap to Open'}
             </motion.p>
           </motion.div>
         )}
@@ -510,6 +659,16 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             >
               {revealedCards.length} / 5 cards
             </motion.p>
+            {psg1 && (
+              <motion.p
+                className="mt-3 text-xs text-gray-500"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+              >
+                [B] Skip
+              </motion.p>
+            )}
           </motion.div>
         )}
 
@@ -522,9 +681,9 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             animate={{ opacity: 1 }}
           >
             {/* Header */}
-            <div className="p-4 text-center">
-              <h1 className="text-xl font-bold font-pixel-heading text-shadow-balatro tracking-wider">Make Your Picks</h1>
-              <p className="text-sm text-gray-400 mt-1">Swipe to choose</p>
+            <div className={`${psg1 ? 'p-2' : 'p-4'} text-center`}>
+              <h1 className={`${psg1 ? 'text-base' : 'text-xl'} font-bold font-pixel-heading text-shadow-balatro tracking-wider`}>Make Your Picks</h1>
+              {!psg1 && <p className="text-sm text-gray-400 mt-1">Swipe to choose</p>}
             </div>
 
             {/* Progress dots */}
@@ -547,7 +706,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
             {/* Card stack */}
             <div className="flex-1 relative px-4 pb-4 min-h-0">
-              <div className="relative w-full max-w-sm mx-auto h-full min-h-[450px]">
+              <div className={`relative w-full max-w-sm mx-auto h-full ${psg1 ? '' : 'min-h-[450px]'}`}>
                 <AnimatePresence>
                   {visibleEvents.map((event, index) => (
                     <SwipeCard
@@ -557,14 +716,17 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                       total={events.length}
                       onSwipe={handleSwipe}
                       isTop={index === 0}
+                      psg1Mode={psg1}
+                      chargeDirection={index === 0 ? chargeDirection : null}
+                      chargeProgress={index === 0 ? chargeProgress : 0}
                     />
                   ))}
                 </AnimatePresence>
               </div>
             </div>
 
-            {/* Picked summary */}
-            {pickedEvents.length > 0 && (
+            {/* Picked summary (hidden on PSG1 to save vertical space) */}
+            {!psg1 && pickedEvents.length > 0 && (
               <motion.div
                 className="p-4 border-t border-card-border"
                 initial={{ opacity: 0, y: 20 }}
@@ -619,7 +781,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
           >
             {/* Confetti particles */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              {[...Array(30)].map((_, i) => (
+              {[...Array(psg1 ? 15 : 30)].map((_, i) => (
                 <motion.div
                   key={i}
                   className="absolute w-3 h-3"
@@ -779,6 +941,16 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             >
               LET&apos;S GO!
             </motion.button>
+            {psg1 && (
+              <motion.p
+                className="mt-3 text-xs text-gray-500"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5 }}
+              >
+                [B] Let&apos;s Go
+              </motion.p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

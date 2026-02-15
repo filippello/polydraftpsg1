@@ -103,12 +103,15 @@ export function usePSG1Navigation({
     if (!enabled || itemCount <= 0) return;
 
     let rafId: number | null = null;
-    let prevB = false;
-    let prevA = false;
-    let prevUp = false;
-    let prevDown = false;
-    let prevLeft = false;
-    let prevRight = false;
+    // Snapshot current button state so a held button from a previous
+    // interaction isn't detected as a new press when the effect restarts
+    let prevB = isGamepadButtonPressed(GP.B);
+    let prevA = isGamepadButtonPressed(GP.A);
+    const initDpad = getDpadDirection();
+    let prevUp = initDpad.up;
+    let prevDown = initDpad.down;
+    let prevLeft = initDpad.left;
+    let prevRight = initDpad.right;
 
     const poll = () => {
       const bNow = isGamepadButtonPressed(GP.B);

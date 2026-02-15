@@ -3,6 +3,8 @@
  *
  * POST /api/seed/images
  * Uploads event images to Supabase Storage and updates event records
+ *
+ * Body: { venue?: "polymarket" | "jupiter", period: "week7" }
  */
 
 import { NextResponse } from 'next/server';
@@ -10,10 +12,36 @@ import { createServiceClient } from '@/lib/supabase/server';
 import fs from 'fs';
 import path from 'path';
 
-const IMAGES_DIR = path.join(process.cwd(), 'input', 'images');
 const BUCKET_NAME = 'event-images';
 
-export async function POST() {
+interface ImageSeedRequest {
+  venue?: string;
+  period: string;
+}
+
+export async function POST(request: Request) {
+  let venue = 'polymarket';
+  let imagesDir: string;
+
+  try {
+    const body: ImageSeedRequest = await request.json();
+
+    if (!body.period) {
+      return NextResponse.json(
+        { error: 'Missing required field: period (e.g. "week7")' },
+        { status: 400 }
+      );
+    }
+
+    venue = body.venue || 'polymarket';
+    imagesDir = path.join(process.cwd(), 'input', body.period);
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid JSON body. Expected: { venue?: "polymarket"|"jupiter", period: "week7" }' },
+      { status: 400 }
+    );
+  }
+
   const supabase = createServiceClient();
 
   const results: { success: string[]; failed: Array<{ file: string; error: string }> } = {
@@ -41,17 +69,17 @@ export async function POST() {
   // Read all images from directory
   let files: string[];
   try {
-    files = fs.readdirSync(IMAGES_DIR).filter((f) => f.endsWith('.png'));
+    files = fs.readdirSync(imagesDir).filter((f) => f.endsWith('.png'));
   } catch (err) {
     return NextResponse.json({
-      error: `Failed to read images directory: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      error: `Failed to read images directory (${imagesDir}): ${err instanceof Error ? err.message : 'Unknown error'}`,
     }, { status: 500 });
   }
 
   for (const filename of files) {
     try {
       const slug = filename.replace('.png', '');
-      const filePath = path.join(IMAGES_DIR, filename);
+      const filePath = path.join(imagesDir, filename);
 
       // Read file
       const fileBuffer = fs.readFileSync(filePath);
@@ -74,11 +102,12 @@ export async function POST() {
         .from(BUCKET_NAME)
         .getPublicUrl(filename);
 
-      // Update event with image URL
+      // Update event with image URL — match field depends on venue
+      const matchField = venue === 'jupiter' ? 'venue_slug' : 'polymarket_slug';
       const { error: updateError } = await supabase
         .from('events')
         .update({ image_url: urlData.publicUrl })
-        .eq('polymarket_slug', slug);
+        .eq(matchField, slug);
 
       if (updateError) {
         results.failed.push({ file: filename, error: `Upload OK, DB update failed: ${updateError.message}` });
@@ -97,6 +126,8 @@ export async function POST() {
 
   return NextResponse.json({
     message: 'Image upload completed',
+    venue,
+    directory: imagesDir,
     total: files.length,
     success: results.success.length,
     failed: results.failed.length,
@@ -105,17 +136,15 @@ export async function POST() {
 }
 
 export async function GET() {
-  // List available images
-  let files: string[];
-  try {
-    files = fs.readdirSync(IMAGES_DIR).filter((f) => f.endsWith('.png'));
-  } catch {
-    files = [];
-  }
-
   return NextResponse.json({
     message: 'POST to this endpoint to upload images',
-    images_found: files.length,
-    files,
+    usage: {
+      method: 'POST',
+      body: {
+        venue: 'polymarket | jupiter (default: polymarket)',
+        period: 'week7 (required — reads PNGs from input/{period}/)',
+      },
+    },
+    example: 'curl -X POST http://localhost:3000/api/seed/images -H "Content-Type: application/json" -d \'{"venue":"jupiter","period":"week7"}\'',
   });
 }

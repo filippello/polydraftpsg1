@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { useSessionStore } from '@/stores';
 import { isPSG1 } from '@/lib/platform';
+import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
+import { usePSG1Scroll } from '@/hooks/usePSG1Scroll';
+import { PSG1ScrollIndicator } from '@/components/layout/PSG1ScrollIndicator';
 
 interface LeaderboardEntry {
   rank: number;
@@ -25,10 +29,24 @@ interface LeaderboardData {
 }
 
 export default function LeaderboardPage() {
+  const router = useRouter();
   const anonymousId = useSessionStore((state) => state.anonymousId);
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const psg1 = isPSG1();
+
+  const handleNavBack = useCallback(() => {
+    router.push('/game');
+  }, [router]);
+
+  usePSG1Navigation({
+    enabled: psg1,
+    itemCount: 0,
+    onBack: handleNavBack,
+  });
+
+  const { scrollPercent, isScrollable } = usePSG1Scroll(psg1);
 
   useEffect(() => {
     async function fetchLeaderboard() {
@@ -61,7 +79,7 @@ export default function LeaderboardPage() {
   const myPoints = data?.userPoints ?? 0;
 
   return (
-    <main className={`flex-1 flex flex-col min-h-screen ${isPSG1() ? 'pl-20' : ''}`}>
+    <main className="flex-1 flex flex-col min-h-screen">
       <Header />
 
       <div className="flex-1 flex flex-col p-4 pb-20">
@@ -197,6 +215,7 @@ export default function LeaderboardPage() {
       </div>
 
       <BottomNav />
+      {psg1 && <PSG1ScrollIndicator scrollPercent={scrollPercent} isScrollable={isScrollable} />}
     </main>
   );
 }

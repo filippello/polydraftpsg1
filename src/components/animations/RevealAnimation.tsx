@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { UserPick, Event } from '@/types';
 import { Confetti, VictoryConfetti } from './Confetti';
 import { GoldCoinBurst, TrophyBurst } from './CoinBurst';
+import { isPSG1 } from '@/lib/platform';
+import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
 
 interface RevealAnimationProps {
   pick: UserPick & { event: Event };
@@ -123,6 +125,29 @@ export function RevealAnimation({ pick, onComplete }: RevealAnimationProps) {
       onCompleteRef.current();
     }
   }, [canSkip]);
+
+  // PSG1: B button / Enter to skip
+  const psg1 = isPSG1();
+  useEffect(() => {
+    if (!psg1) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && canSkip) { e.preventDefault(); onCompleteRef.current(); }
+    };
+    let rafId: number | null = null;
+    let prevB = false;
+    const poll = () => {
+      const bNow = isGamepadButtonPressed(GP.B);
+      if (bNow && !prevB && canSkip) onCompleteRef.current();
+      prevB = bNow;
+      rafId = requestAnimationFrame(poll);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, canSkip]);
 
   return (
     <motion.div
@@ -508,7 +533,7 @@ export function RevealAnimation({ pick, onComplete }: RevealAnimationProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            Tap to skip
+            {psg1 ? '[B] Skip' : 'Tap to skip'}
           </motion.p>
         )}
       </AnimatePresence>

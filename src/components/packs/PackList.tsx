@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { PackListItem } from './PackListItem';
@@ -7,9 +8,19 @@ import type { PackSummary } from '@/stores/myPacks';
 
 interface PackListProps {
   packs: PackSummary[];
+  focusedIndex?: number;
 }
 
-export function PackList({ packs }: PackListProps) {
+export function PackList({ packs, focusedIndex }: PackListProps) {
+  const focusedRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll focused item into view
+  useEffect(() => {
+    if (focusedIndex !== undefined && focusedRef.current) {
+      focusedRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [focusedIndex]);
+
   if (packs.length === 0) {
     return (
       <motion.div
@@ -32,7 +43,12 @@ export function PackList({ packs }: PackListProps) {
   return (
     <div className="space-y-3">
       {packs.map((pack, index) => (
-        <PackListItem key={pack.id} pack={pack} index={index} />
+        <div
+          key={pack.id}
+          ref={focusedIndex === index ? focusedRef : undefined}
+        >
+          <PackListItem pack={pack} index={index} focused={focusedIndex === index} />
+        </div>
       ))}
     </div>
   );

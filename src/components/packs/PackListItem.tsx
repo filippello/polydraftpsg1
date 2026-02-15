@@ -9,6 +9,7 @@ import type { PackSummary } from '@/stores/myPacks';
 interface PackListItemProps {
   pack: PackSummary;
   index: number;
+  focused?: boolean;
 }
 
 function getStatusBadge(status: PackSummary['status']) {
@@ -24,7 +25,7 @@ function getStatusBadge(status: PackSummary['status']) {
   }
 }
 
-export function PackListItem({ pack, index }: PackListItemProps) {
+export function PackListItem({ pack, index, focused }: PackListItemProps) {
   const statusBadge = getStatusBadge(pack.status);
   const pendingReveals = pack.resolvedCount - pack.revealedCount;
 
@@ -40,7 +41,7 @@ export function PackListItem({ pack, index }: PackListItemProps) {
             pack.status === 'has_reveals'
               ? 'border-game-gold'
               : 'border-card-border'
-          }`}
+          } ${focused ? 'psg1-focus' : ''}`}
         >
           <div className="flex items-start gap-3">
             {/* Pack Icon */}

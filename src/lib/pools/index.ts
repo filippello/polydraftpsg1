@@ -54,6 +54,8 @@ export interface DBEvent {
   venue: string | null;
   venue_event_id: string | null;
   venue_slug: string | null;
+  image_url: string | null;
+  description: string | null;
   pool_id: string | null;
   period: string | null;
   created_at: string;
@@ -104,6 +106,8 @@ async function getPoolFromDB(venue: string, packType: string): Promise<EventPool
 
   const dbEvents = (events || []) as DBEvent[];
 
+  console.log('[getPoolFromDB] Sample event image_url (raw):', dbEvents[0]?.image_url);
+
   // Map DB events to Event type
   const mappedEvents: Event[] = dbEvents.map((e) => ({
     id: e.id,
@@ -115,6 +119,8 @@ async function getPoolFromDB(venue: string, packType: string): Promise<EventPool
     polymarket_id: e.polymarket_id || undefined,
     volume: e.volume || undefined,
     title: e.title,
+    image_url: e.image_url || undefined,
+    description: e.description || undefined,
     category: e.category as EventCategory,
     subcategory: e.subcategory || undefined,
     outcome_a_label: e.outcome_a_label,
@@ -132,6 +138,8 @@ async function getPoolFromDB(venue: string, packType: string): Promise<EventPool
     created_at: e.created_at,
     updated_at: e.updated_at,
   }));
+
+  console.log('[getPoolFromDB] Sample event image_url (mapped):', mappedEvents[0]?.image_url);
 
   return {
     id: dbPool.slug,
