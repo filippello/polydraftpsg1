@@ -11,6 +11,7 @@ import { useMyPacksStore, useStoredPack, useSessionStore, usePackSummaries } fro
 import { useEventSync } from '@/hooks/useEventSync';
 import { isPSG1 } from '@/lib/platform';
 import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
+import { PSG1BackButton } from '@/components/layout/PSG1BackButton';
 import type { UserPick, Event } from '@/types';
 
 export default function QueuePage({ params }: { params: { packId: string } }) {
@@ -265,12 +266,6 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
       {psg1 ? (
         <div className="sticky top-0 z-40 bg-game-bg/95 backdrop-blur-sm border-b border-white/10">
           <div className="flex items-center gap-3 p-4">
-            <button
-              onClick={handleNavBack}
-              className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <span className="text-lg">←</span>
-            </button>
             <motion.h1
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -278,13 +273,14 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
             >
               YOUR QUEUE
             </motion.h1>
-            <div className="flex-1" />
             <span className="text-xs text-gray-400">
               {resolvedCount}/{picks.length}
             </span>
             <span className="text-xs text-game-gold">
               ${totalPoints.toFixed(2)}
             </span>
+            <div className="flex-1" />
+            <PSG1BackButton onClick={handleNavBack} />
           </div>
         </div>
       ) : (

@@ -10,6 +10,7 @@ import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { PurchaseModal } from './PurchaseModal';
 import { ShareButton } from './ShareButton';
+import { PSG1BackButton } from '@/components/layout/PSG1BackButton';
 
 interface OutcomeCarouselProps {
   market: ExploreMarket;
@@ -209,15 +210,10 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-3 p-4 border-b border-white/10">
-          <button
-            onClick={onBack}
-            className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-          >
-            <span className="text-lg">←</span>
-          </button>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{market.title}</p>
           </div>
+          <PSG1BackButton onClick={() => onBack?.()} />
         </div>
 
         {/* Completion screen */}
@@ -246,12 +242,6 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
     <div className={`flex-1 flex flex-col ${screenShake ? 'animate-screen-shake' : ''}`}>
       {/* Header */}
       <div className={`flex items-center gap-2 border-b border-white/10 ${psg1 ? 'px-3 py-2' : 'p-4 gap-3'}`}>
-        <button
-          onClick={onBack}
-          className={`flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors ${psg1 ? 'w-8 h-8' : 'w-10 h-10'}`}
-        >
-          <span className={psg1 ? 'text-sm' : 'text-lg'}>←</span>
-        </button>
         <div className="flex-1 min-w-0">
           {!psg1 && <p className="text-xs text-gray-500 uppercase tracking-wider">{market.category}</p>}
           <p className={`font-medium truncate ${psg1 ? 'text-xs' : 'text-sm'}`}>{market.title}</p>
@@ -266,6 +256,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
             {outcomes.length}
           </span>
         </div>
+        <PSG1BackButton onClick={() => onBack?.()} />
       </div>
 
       {/* Card Area */}

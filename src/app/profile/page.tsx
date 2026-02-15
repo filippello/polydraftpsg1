@@ -10,6 +10,7 @@ import { isPSG1 } from '@/lib/platform';
 import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
 import { usePSG1Scroll } from '@/hooks/usePSG1Scroll';
 import { PSG1ScrollIndicator } from '@/components/layout/PSG1ScrollIndicator';
+import { PSG1BackButton } from '@/components/layout/PSG1BackButton';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -85,7 +86,17 @@ export default function ProfilePage() {
 
   return (
     <main className="flex-1 flex flex-col min-h-screen">
-      <Header />
+      {psg1 ? (
+        <div className="sticky top-0 z-20 bg-game-bg/95 backdrop-blur-sm border-b border-white/10">
+          <div className="flex items-center gap-3 p-4">
+            <h1 className="text-xl font-bold font-pixel-heading">PROFILE</h1>
+            <div className="flex-1" />
+            <PSG1BackButton onClick={handleNavBack} />
+          </div>
+        </div>
+      ) : (
+        <Header />
+      )}
 
       <div className="flex-1 flex flex-col p-4 pb-20">
         {/* Avatar & Name */}

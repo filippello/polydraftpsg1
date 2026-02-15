@@ -9,6 +9,7 @@ import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { isPSG1 } from '@/lib/platform';
 import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
+import { PSG1BackButton } from '@/components/layout/PSG1BackButton';
 import { PackListItem } from '@/components/packs';
 import { useSessionStore, usePackSummaries, useTotalPendingReveals } from '@/stores';
 
@@ -200,6 +201,7 @@ export default function GameHomePage() {
               <span className="text-balatro-sm font-pixel-body text-gray-500" style={{ textShadow: '1px 1px 0 rgba(0,0,0,0.8)' }}>
                 #{weeklyRank}
               </span>
+              <PSG1BackButton onClick={handleNavBack} />
             </div>
           </div>
         </div>
