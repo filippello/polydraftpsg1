@@ -12,13 +12,15 @@ export function PSG1ScrollIndicator({ scrollPercent, isScrollable }: PSG1ScrollI
   const thumbPercent = Math.min(scrollPercent, 100);
 
   return (
-    <div className="fixed right-1 top-16 bottom-16 w-1.5 z-40 pointer-events-none">
-      <div className="h-full bg-white/10 rounded-full relative">
+    <div className="absolute right-2 top-16 bottom-16 w-2 z-40 pointer-events-none flex flex-col items-center">
+      <span className="font-pixel-body text-balatro-xs text-emerald-400/50 mb-1">▲</span>
+      <div className="flex-1 w-full bg-white/10 rounded-full relative">
         <div
-          className="absolute w-full h-8 bg-game-accent/60 rounded-full transition-[top] duration-150"
-          style={{ top: `calc(${thumbPercent}% - ${thumbPercent * 0.32}px)` }}
+          className="absolute w-full h-10 bg-emerald-400/70 rounded-full transition-[top] duration-150"
+          style={{ top: `calc(${thumbPercent}% - ${thumbPercent * 0.4}px)` }}
         />
       </div>
+      <span className="font-pixel-body text-balatro-xs text-emerald-400/50 mt-1">▼</span>
     </div>
   );
 }

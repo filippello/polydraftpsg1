@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
@@ -36,6 +36,7 @@ export default function LeaderboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const psg1 = isPSG1();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleNavBack = useCallback(() => {
     router.push('/game');
@@ -47,7 +48,7 @@ export default function LeaderboardPage() {
     onBack: handleNavBack,
   });
 
-  const { scrollPercent, isScrollable } = usePSG1Scroll(psg1);
+  const { scrollPercent, isScrollable } = usePSG1Scroll(psg1, psg1 ? scrollRef : undefined);
 
   useEffect(() => {
     async function fetchLeaderboard() {
@@ -79,21 +80,9 @@ export default function LeaderboardPage() {
   const myRank = data?.userRank ?? '-';
   const myPoints = data?.userPoints ?? 0;
 
-  return (
-    <main className="flex-1 flex flex-col min-h-screen">
-      {psg1 ? (
-        <div className="sticky top-0 z-20 bg-game-bg/95 backdrop-blur-sm border-b border-white/10">
-          <div className="flex items-center gap-3 p-4">
-            <h1 className="text-xl font-bold font-pixel-heading">LEADERBOARD</h1>
-            <div className="flex-1" />
-            <PSG1BackButton onClick={handleNavBack} />
-          </div>
-        </div>
-      ) : (
-        <Header />
-      )}
-
-      <div className="flex-1 flex flex-col p-4 pb-20">
+  const content = (
+    <>
+      <div className={psg1 ? 'p-4 pb-20' : 'flex-1 flex flex-col p-4 pb-20'}>
         {/* Title */}
         {!psg1 && (
           <div className="text-center mb-6">
@@ -104,20 +93,23 @@ export default function LeaderboardPage() {
 
         {/* My Position Card */}
         <motion.div
-          className="card-pixel mb-6"
+          className={psg1
+            ? 'bg-white/[0.03] rounded-2xl border border-white/[0.06] backdrop-blur-sm p-4 mb-6'
+            : 'card-pixel mb-6'
+          }
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-400">Your Position</p>
-              <p className="text-2xl font-bold">
+              <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500' : 'text-xs text-gray-400'}>Your Position</p>
+              <p className={psg1 ? 'text-balatro-xl font-pixel-heading text-white' : 'text-2xl font-bold'}>
                 {typeof myRank === 'number' ? `#${myRank}` : myRank}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-400">Points</p>
-              <p className="text-2xl font-bold text-game-gold">{myPoints}</p>
+              <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500' : 'text-xs text-gray-400'}>Points</p>
+              <p className={psg1 ? 'text-balatro-xl font-pixel-heading text-emerald-400' : 'text-2xl font-bold text-game-gold'}>{myPoints}</p>
             </div>
           </div>
         </motion.div>
@@ -126,8 +118,8 @@ export default function LeaderboardPage() {
         {isLoading && (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 border-4 border-game-accent border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-gray-400">Loading leaderboard...</p>
+              <div className={`w-12 h-12 mx-auto mb-4 border-4 ${psg1 ? 'border-emerald-400' : 'border-game-accent'} border-t-transparent rounded-full animate-spin`} />
+              <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500' : 'text-sm text-gray-400'}>Loading leaderboard...</p>
             </div>
           </div>
         )}
@@ -167,12 +159,18 @@ export default function LeaderboardPage() {
               {data.entries.map((entry, index) => (
                 <motion.div
                   key={entry.profileId}
-                  className={`p-3 rounded border-2 ${
-                    entry.rank <= 3
-                      ? 'border-game-gold bg-game-gold/10'
-                      : entry.isCurrentUser
-                        ? 'border-game-accent bg-game-accent/10'
-                        : 'border-card-border'
+                  className={`${psg1 ? 'p-4' : 'p-3'} ${psg1 ? 'rounded-xl' : 'rounded'} ${
+                    psg1
+                      ? entry.rank <= 3
+                        ? 'bg-emerald-500/[0.06] border border-emerald-500/30'
+                        : entry.isCurrentUser
+                          ? 'bg-cyan-400/[0.06] border border-cyan-400/30'
+                          : 'bg-white/[0.03] border border-white/[0.06]'
+                      : entry.rank <= 3
+                        ? 'border-2 border-game-gold bg-game-gold/10'
+                        : entry.isCurrentUser
+                          ? 'border-2 border-game-accent bg-game-accent/10'
+                          : 'border-2 border-card-border'
                   }`}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -196,21 +194,21 @@ export default function LeaderboardPage() {
 
                     {/* User info */}
                     <div className="flex-1">
-                      <p className="font-bold text-sm">
+                      <p className={psg1 ? 'font-pixel-body text-balatro-lg text-white' : 'font-bold text-sm'}>
                         {entry.displayName}
                         {entry.isCurrentUser && (
-                          <span className="ml-2 text-xs text-game-accent">(You)</span>
+                          <span className={psg1 ? 'ml-2 text-balatro-base text-cyan-400' : 'ml-2 text-xs text-game-accent'}>(You)</span>
                         )}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500' : 'text-xs text-gray-500'}>
                         {entry.packsOpened} packs • {(entry.accuracy * 100).toFixed(0)}% accuracy
                       </p>
                     </div>
 
                     {/* Points */}
                     <div className="text-right">
-                      <p className="font-bold text-game-gold">{entry.totalPoints.toFixed(1)}</p>
-                      <p className="text-xs text-gray-500">pts</p>
+                      <p className={psg1 ? 'text-balatro-lg font-pixel-heading text-emerald-400' : 'font-bold text-game-gold'}>{entry.totalPoints.toFixed(1)}</p>
+                      <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500' : 'text-xs text-gray-500'}>pts</p>
                     </div>
                   </div>
                 </motion.div>
@@ -219,7 +217,7 @@ export default function LeaderboardPage() {
 
             {/* Total players info */}
             <div className="mt-4 text-center">
-              <p className="text-sm text-gray-500">
+              <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500' : 'text-sm text-gray-500'}>
                 Showing top {data.entries.length} of {data.totalPlayers.toLocaleString()} players
               </p>
             </div>
@@ -228,6 +226,31 @@ export default function LeaderboardPage() {
       </div>
 
       <BottomNav />
+    </>
+  );
+
+  return (
+    <main className="relative flex-1 flex flex-col min-h-screen overflow-hidden">
+      {psg1 ? (
+        <div className="sticky top-0 z-20 bg-game-bg/95 backdrop-blur-sm border-b border-white/10">
+          <div className="flex items-center gap-3 p-4">
+            <h1 className="text-xl font-bold font-pixel-heading">LEADERBOARD</h1>
+            <div className="flex-1" />
+            <PSG1BackButton onClick={handleNavBack} />
+          </div>
+        </div>
+      ) : (
+        <Header />
+      )}
+
+      {psg1 ? (
+        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-hide">
+          {content}
+        </div>
+      ) : (
+        content
+      )}
+
       {psg1 && <PSG1ScrollIndicator scrollPercent={scrollPercent} isScrollable={isScrollable} />}
     </main>
   );
