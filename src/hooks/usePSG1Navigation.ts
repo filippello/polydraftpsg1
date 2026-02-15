@@ -36,8 +36,16 @@ export function usePSG1Navigation({
     }
   }, [itemCount]);
 
+  const lastMoveTime = useRef(0);
+
   const move = useCallback(
     (delta: number) => {
+      // Debounce: prevent double-fire when D-pad triggers both
+      // keyboard event and gamepad poll within the same frame
+      const now = performance.now();
+      if (now - lastMoveTime.current < 60) return;
+      lastMoveTime.current = now;
+
       setFocusedIndex((prev) => {
         const next = prev + delta;
         if (next < 0) {

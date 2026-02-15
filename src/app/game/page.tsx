@@ -181,30 +181,26 @@ export default function GameHomePage() {
 
   return (
     <main className="flex-1 flex flex-col">
-      {/* PSG1: Custom minimal header (Explore-style) */}
+      {/* PSG1: Custom minimal header */}
       {psg1 ? (
-        <div className="sticky top-0 z-20 bg-game-bg/95 backdrop-blur-sm border-b border-white/10">
-          <div className="flex items-center gap-3 p-4">
-            <button
-              onClick={handleNavBack}
-              className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <span className="text-lg">←</span>
-            </button>
+        <div className="pt-3 px-4 pb-1">
+          <div className="flex items-center justify-between">
             <motion.h1
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-xl font-bold font-pixel-heading"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-balatro-lg font-pixel-heading text-white"
+              style={{ textShadow: '2px 2px 0 rgba(0,0,0,0.8), 4px 4px 0 rgba(0,0,0,0.4)' }}
             >
               PLAY DRAFT
             </motion.h1>
-            <div className="flex-1" />
-            <span className="text-xs text-game-gold">
-              ${weeklyPoints}
-            </span>
-            <span className="text-xs text-gray-400">
-              #{weeklyRank}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-balatro-sm font-pixel-body text-emerald-400" style={{ textShadow: '1px 1px 0 rgba(0,0,0,0.8)' }}>
+                ${weeklyPoints}
+              </span>
+              <span className="text-balatro-sm font-pixel-body text-gray-500" style={{ textShadow: '1px 1px 0 rgba(0,0,0,0.8)' }}>
+                #{weeklyRank}
+              </span>
+            </div>
           </div>
         </div>
       ) : (
@@ -214,57 +210,78 @@ export default function GameHomePage() {
       {/* PSG1: Full-screen menu */}
       {psg1 ? (
         <>
-          <div className="flex-1 flex flex-col p-4 pb-16">
+          <div className="flex-1 flex flex-col items-center justify-center px-4 pb-16">
             {menuView === 'main' ? (
               /* Main menu */
-              <div className="space-y-2">
-                {psg1MenuItems.map((item, i) => (
-                  <motion.div
-                    key={item.label}
-                    ref={focusedIndex === i ? focusedRef : undefined}
-                    className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-colors cursor-pointer ${
-                      focusedIndex === i
-                        ? 'border-game-accent bg-game-accent/10 psg1-focus'
-                        : 'border-card-border bg-white/5'
-                    }`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => handleMenuSelect(i)}
-                  >
-                    <span className="text-2xl">{item.icon}</span>
-                    <span className="flex-1 text-lg font-bold">{item.label}</span>
-                    {item.badge !== undefined && (
-                      <span className="min-w-[24px] h-6 flex items-center justify-center rounded-full bg-game-gold text-black text-xs font-bold px-2">
-                        {item.badge}
+              <div className="w-full max-w-xs bg-white/[0.03] rounded-2xl border border-white/[0.06] p-3 space-y-1.5 backdrop-blur-sm">
+                {psg1MenuItems.map((item, i) => {
+                  const isFocused = focusedIndex === i;
+                  return (
+                    <motion.div
+                      key={item.label}
+                      ref={isFocused ? focusedRef : undefined}
+                      className={`relative flex items-center justify-center py-3.5 px-4 rounded-xl cursor-pointer transition-all ${
+                        isFocused
+                          ? 'bg-gradient-to-r from-emerald-500 to-cyan-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                          : 'bg-white/[0.04] border border-white/[0.06]'
+                      }`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        scale: isFocused ? 1.02 : 1,
+                      }}
+                      transition={{ delay: i * 0.05, type: 'spring', stiffness: 400, damping: 25 }}
+                      onClick={() => handleMenuSelect(i)}
+                    >
+                      <span
+                        className={`text-balatro-base font-pixel-heading tracking-wide ${
+                          isFocused ? 'text-black' : 'text-gray-300'
+                        }`}
+                      >
+                        {item.label}
                       </span>
-                    )}
-                    <span className="text-gray-500">{'\u203A'}</span>
-                  </motion.div>
-                ))}
+                      {item.badge !== undefined && (
+                        <span className={`absolute right-3 min-w-[22px] h-5 flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 ${
+                          isFocused
+                            ? 'bg-black/20 text-white'
+                            : 'bg-emerald-500/80 text-black'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </motion.div>
+                  );
+                })}
               </div>
             ) : (
               /* Pack sprites view */
               <div className="flex-1 flex flex-col items-center justify-center">
-                <p className="text-sm text-gray-400 mb-6">
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-balatro-base font-pixel-heading text-gray-300 mb-6"
+                >
                   {packsRemaining > 0
                     ? `${packsRemaining} pack${packsRemaining > 1 ? 's' : ''} remaining`
                     : 'No packs available'}
-                </p>
+                </motion.p>
 
                 {packsRemaining > 0 ? (
-                  <>
+                  <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-6 backdrop-blur-sm">
                     <div className="relative flex justify-center items-end h-48 mb-4">
                       {/* First pack */}
                       <motion.div
                         ref={focusedIndex === 0 ? focusedRef : undefined}
-                        className={`cursor-pointer origin-bottom ${focusedIndex === 0 ? 'psg1-focus rounded-lg' : ''}`}
+                        className="cursor-pointer origin-bottom"
                         style={{
                           rotate: packsRemaining >= 2 ? -8 : 0,
                           x: packsRemaining >= 2 ? -50 : 0,
                           zIndex: focusedIndex === 0 ? 10 : 2,
                         }}
-                        animate={focusedIndex === 0 ? { y: -15, scale: 1.05 } : { y: 0, scale: 1 }}
+                        animate={focusedIndex === 0
+                          ? { y: -15, scale: 1.08, filter: 'drop-shadow(0 0 16px rgba(16,185,129,0.5))' }
+                          : { y: 0, scale: 1, filter: 'drop-shadow(0 0 0 transparent)' }}
                         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                         onClick={handlePackSelect}
                       >
@@ -274,13 +291,15 @@ export default function GameHomePage() {
                       {packsRemaining >= 2 && (
                         <motion.div
                           ref={focusedIndex === 1 ? focusedRef : undefined}
-                          className={`absolute cursor-pointer origin-bottom ${focusedIndex === 1 ? 'psg1-focus rounded-lg' : ''}`}
+                          className="absolute cursor-pointer origin-bottom"
                           style={{
                             rotate: 8,
                             x: 50,
                             zIndex: focusedIndex === 1 ? 10 : 1,
                           }}
-                          animate={focusedIndex === 1 ? { y: -15, scale: 1.05 } : { y: 0, scale: 1 }}
+                          animate={focusedIndex === 1
+                            ? { y: -15, scale: 1.08, filter: 'drop-shadow(0 0 16px rgba(16,185,129,0.5))' }
+                            : { y: 0, scale: 1, filter: 'drop-shadow(0 0 0 transparent)' }}
                           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                           onClick={handlePackSelect}
                         >
@@ -290,17 +309,19 @@ export default function GameHomePage() {
                     </div>
 
                     <motion.p
-                      className="text-lg font-bold"
-                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      className="text-balatro-sm font-pixel-body text-emerald-400 text-center"
+                      animate={{ opacity: [0.4, 1, 0.4] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     >
                       Press B to Open
                     </motion.p>
-                  </>
+                  </div>
                 ) : (
-                  <div className="text-center py-8">
+                  <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-8 backdrop-blur-sm text-center">
                     <p className="text-4xl mb-4">📭</p>
-                    <p className="text-gray-400">Come back next Monday!</p>
+                    <p className="text-balatro-sm font-pixel-body text-gray-500">
+                      Come back next Monday!
+                    </p>
                   </div>
                 )}
               </div>
@@ -308,10 +329,14 @@ export default function GameHomePage() {
           </div>
 
           {/* PSG1: Button hints bar */}
-          <div className="fixed bottom-0 left-0 right-0 z-10 bg-game-bg/95 border-t border-white/10 px-6 py-3">
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>[A] Back</span>
-              <span>[B] {menuView === 'main' ? 'Select' : 'Open'}</span>
+          <div className="fixed bottom-0 left-0 right-0 z-10 bg-black/40 border-t border-white/[0.06] backdrop-blur-sm px-6 py-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-balatro-xs font-pixel-body text-gray-500">
+                [A] Back
+              </span>
+              <span className="text-balatro-xs font-pixel-body text-emerald-400">
+                [B] {menuView === 'main' ? 'Select' : 'Open'}
+              </span>
             </div>
           </div>
         </>
