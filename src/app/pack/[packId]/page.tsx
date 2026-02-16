@@ -219,11 +219,11 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
       <main className="min-h-screen bg-game-bg flex flex-col items-center justify-center p-4">
         <div className="text-center">
           <div className="text-6xl mb-4">📦</div>
-          <h1 className="text-xl font-bold mb-2">Pack Not Found</h1>
-          <p className="text-gray-400 mb-6">This pack doesn&apos;t exist or has been removed.</p>
+          <h1 className={psg1 ? 'text-balatro-lg font-pixel-heading text-white mb-2' : 'text-xl font-bold mb-2'}>Pack Not Found</h1>
+          <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500 mb-6' : 'text-gray-400 mb-6'}>This pack doesn&apos;t exist or has been removed.</p>
           <Link
             href="/my-packs"
-            className="btn-pixel-gold inline-block"
+            className={psg1 ? 'bg-emerald-400 text-black rounded-2xl font-pixel-heading text-balatro-base px-6 py-3 inline-block' : 'btn-pixel-gold inline-block'}
           >
             View My Packs
           </Link>
@@ -238,7 +238,7 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
       <main className="min-h-screen bg-game-bg flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl animate-pulse">📦</div>
-          <p className="mt-4 text-gray-400">Loading pack...</p>
+          <p className={psg1 ? 'mt-4 text-balatro-base font-pixel-body text-gray-500' : 'mt-4 text-gray-400'}>Loading pack...</p>
         </div>
       </main>
     );
@@ -273,10 +273,10 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
             >
               YOUR QUEUE
             </motion.h1>
-            <span className="text-xs text-gray-400">
+            <span className="text-balatro-sm font-pixel-body text-gray-500">
               {resolvedCount}/{picks.length}
             </span>
-            <span className="text-xs text-game-gold">
+            <span className="text-balatro-sm font-pixel-body text-emerald-400">
               ${totalPoints.toFixed(2)}
             </span>
             <div className="flex-1" />
@@ -335,13 +335,13 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
           >
             🎉
           </motion.div>
-          <p className="text-lg font-bold">Pack Complete!</p>
-          <p className="text-sm text-gray-400">
+          <p className={psg1 ? 'text-balatro-lg font-pixel-heading text-white' : 'text-lg font-bold'}>Pack Complete!</p>
+          <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500' : 'text-sm text-gray-400'}>
             {correctCount}/{picks.length} correct • ${totalPoints.toFixed(2)} USD
           </p>
           <button
             onClick={() => setShowSummary(true)}
-            className="mt-3 text-game-gold text-sm underline"
+            className={psg1 ? 'mt-3 text-emerald-400 text-balatro-base font-pixel-body underline' : 'mt-3 text-game-gold text-sm underline'}
           >
             View Summary
           </button>
@@ -371,17 +371,20 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
           {/* Open Another Pack CTA */}
           <motion.button
             onClick={handleOpenAnotherPack}
-            className="w-full mt-6 py-4 px-6 bg-gradient-to-r from-game-accent/20 to-game-gold/20 border-2 border-dashed border-game-accent/50 rounded-xl hover:border-game-accent transition-colors group"
+            className={psg1
+              ? 'w-full mt-6 py-4 px-6 bg-white/[0.03] border border-dashed border-emerald-400/50 rounded-2xl hover:border-emerald-400 transition-colors group'
+              : 'w-full mt-6 py-4 px-6 bg-gradient-to-r from-game-accent/20 to-game-gold/20 border-2 border-dashed border-game-accent/50 rounded-xl hover:border-game-accent transition-colors group'
+            }
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
             <div className="flex items-center justify-center gap-3">
               <span className="text-2xl group-hover:animate-bounce">📦</span>
               <div className="text-left">
-                <p className="font-bold text-game-accent">Open Another Pack</p>
-                <p className="text-xs text-gray-400">Keep the momentum going!</p>
+                <p className={psg1 ? 'font-pixel-heading text-balatro-base text-emerald-400' : 'font-bold text-game-accent'}>Open Another Pack</p>
+                <p className={psg1 ? 'text-balatro-sm font-pixel-body text-gray-600' : 'text-xs text-gray-400'}>Keep the momentum going!</p>
               </div>
-              <span className="text-xl">→</span>
+              <span className={psg1 ? 'text-xl text-gray-600' : 'text-xl'}>→</span>
             </div>
           </motion.button>
         </div>
@@ -396,12 +399,15 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className="fixed bottom-24 left-4 right-4 z-50 md:left-1/2 md:-translate-x-1/2 md:max-w-[398px]"
           >
-            <div className="bg-game-primary border-2 border-game-gold rounded-xl p-4 shadow-lg max-w-sm mx-auto">
+            <div className={psg1
+              ? 'bg-white/[0.03] border border-emerald-400/50 rounded-2xl backdrop-blur-sm p-4 shadow-lg max-w-sm mx-auto'
+              : 'bg-game-primary border-2 border-game-gold rounded-xl p-4 shadow-lg max-w-sm mx-auto'
+            }>
               <div className="flex items-center gap-3">
                 <span className="text-3xl">🛒</span>
                 <div className="flex-1">
-                  <p className="font-bold text-game-gold">Buy More Packs!</p>
-                  <p className="text-sm text-gray-300">You need to purchase a pack to open another one.</p>
+                  <p className={psg1 ? 'font-pixel-heading text-balatro-base text-emerald-400' : 'font-bold text-game-gold'}>Buy More Packs!</p>
+                  <p className={psg1 ? 'text-balatro-sm font-pixel-body text-gray-500' : 'text-sm text-gray-300'}>You need to purchase a pack to open another one.</p>
                 </div>
                 <button
                   onClick={() => setShowBuyToast(false)}

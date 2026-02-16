@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { PackListItem } from './PackListItem';
+import { isPSG1 } from '@/lib/platform';
 import type { PackSummary } from '@/stores/myPacks';
 
 interface PackListProps {
@@ -13,6 +14,7 @@ interface PackListProps {
 
 export function PackList({ packs, focusedIndex }: PackListProps) {
   const focusedRef = useRef<HTMLDivElement>(null);
+  const psg1 = isPSG1();
 
   // Auto-scroll focused item into view
   useEffect(() => {
@@ -29,11 +31,17 @@ export function PackList({ packs, focusedIndex }: PackListProps) {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="text-6xl mb-4">📦</div>
-        <h2 className="text-xl font-bold mb-2">No Packs Yet</h2>
-        <p className="text-gray-400 text-center mb-6">
+        <h2 className={psg1 ? 'text-balatro-lg font-pixel-heading text-white mb-2' : 'text-xl font-bold mb-2'}>No Packs Yet</h2>
+        <p className={psg1 ? 'text-balatro-base font-pixel-body text-gray-500 text-center mb-6' : 'text-gray-400 text-center mb-6'}>
           Open your first pack to start making picks!
         </p>
-        <Link href="/pack/open/sports" className="btn-pixel-gold">
+        <Link
+          href="/pack/open/sports"
+          className={psg1
+            ? 'bg-emerald-400 text-black rounded-2xl font-pixel-heading text-balatro-base px-6 py-3'
+            : 'btn-pixel-gold'
+          }
+        >
           Open Sports Pack
         </Link>
       </motion.div>

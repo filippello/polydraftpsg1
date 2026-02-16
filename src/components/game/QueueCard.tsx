@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { isPSG1 } from '@/lib/platform';
 import type { UserPick, Event } from '@/types';
 import { formatProbability } from '@/lib/scoring/calculator';
 
@@ -23,6 +24,8 @@ export function QueueCard({
   onReveal,
   focused,
 }: QueueCardProps) {
+  const psg1 = isPSG1();
+
   const pickedLabel =
     pick.picked_outcome === 'a'
       ? pick.event.outcome_a_label
@@ -38,57 +41,87 @@ export function QueueCard({
   let statusIcon = '';
   let statusText = '';
 
-  if (isRevealed) {
-    if (pick.is_correct) {
-      stateClasses = 'border-game-success bg-game-success/10';
-      statusIcon = '✓';
-      statusText = 'WIN';
+  if (psg1) {
+    if (isRevealed) {
+      if (pick.is_correct) {
+        stateClasses = 'border-emerald-400 bg-emerald-400/10';
+        statusIcon = '✓';
+        statusText = 'WIN';
+      } else {
+        stateClasses = 'border-red-400 bg-red-400/10';
+        statusIcon = '✗';
+        statusText = 'LOSE';
+      }
+    } else if (isChestReady) {
+      stateClasses = 'border-emerald-400 bg-gradient-to-br from-emerald-400/20 to-emerald-500/10';
+      statusIcon = '🎁';
+      statusText = 'READY!';
+    } else if (isNext && !pick.is_resolved) {
+      stateClasses = 'border-amber-400 bg-amber-400/5';
+      statusIcon = '⏳';
+      statusText = 'PENDING';
+    } else if (isLocked) {
+      stateClasses = 'border-white/[0.06] opacity-60';
+      statusIcon = '🔒';
+      statusText = pick.is_resolved ? 'QUEUED' : 'PENDING';
     } else {
-      stateClasses = 'border-game-failure bg-game-failure/10';
-      statusIcon = '✗';
-      statusText = 'LOSE';
+      stateClasses = 'border-white/[0.06]';
+      statusIcon = '⏳';
+      statusText = 'PENDING';
     }
-  } else if (isChestReady) {
-    stateClasses = 'border-game-gold bg-gradient-to-br from-game-gold/20 to-amber-500/10';
-    statusIcon = '🎁';
-    statusText = 'READY!';
-  } else if (isNext && !pick.is_resolved) {
-    stateClasses = 'border-game-warning bg-game-warning/5';
-    statusIcon = '⏳';
-    statusText = 'PENDING';
-  } else if (isLocked) {
-    stateClasses = 'border-card-border opacity-60';
-    statusIcon = '🔒';
-    statusText = pick.is_resolved ? 'QUEUED' : 'PENDING';
   } else {
-    stateClasses = 'border-card-border';
-    statusIcon = '⏳';
-    statusText = 'PENDING';
+    if (isRevealed) {
+      if (pick.is_correct) {
+        stateClasses = 'border-game-success bg-game-success/10';
+        statusIcon = '✓';
+        statusText = 'WIN';
+      } else {
+        stateClasses = 'border-game-failure bg-game-failure/10';
+        statusIcon = '✗';
+        statusText = 'LOSE';
+      }
+    } else if (isChestReady) {
+      stateClasses = 'border-game-gold bg-gradient-to-br from-game-gold/20 to-amber-500/10';
+      statusIcon = '🎁';
+      statusText = 'READY!';
+    } else if (isNext && !pick.is_resolved) {
+      stateClasses = 'border-game-warning bg-game-warning/5';
+      statusIcon = '⏳';
+      statusText = 'PENDING';
+    } else if (isLocked) {
+      stateClasses = 'border-card-border opacity-60';
+      statusIcon = '🔒';
+      statusText = pick.is_resolved ? 'QUEUED' : 'PENDING';
+    } else {
+      stateClasses = 'border-card-border';
+      statusIcon = '⏳';
+      statusText = 'PENDING';
+    }
   }
 
   // Chest ready state - special expanded card
   if (isChestReady) {
     return (
       <motion.div
-        className={`rounded-xl border-2 ${stateClasses} overflow-hidden ${focused ? 'psg1-focus' : ''}`}
+        className={`${psg1 ? 'rounded-2xl border' : 'rounded-xl border-2'} ${stateClasses} overflow-hidden ${focused ? 'psg1-focus' : ''}`}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: position * 0.1 }}
       >
         {/* Event info header */}
-        <div className="p-3 border-b border-game-gold/30">
+        <div className={`p-3 border-b ${psg1 ? 'border-emerald-400/30' : 'border-game-gold/30'}`}>
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-game-gold text-black">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${psg1 ? 'bg-emerald-400 text-black' : 'bg-game-gold text-black'}`}>
               {position}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{pick.event.title}</p>
+              <p className={psg1 ? 'font-pixel-heading text-balatro-base text-white truncate' : 'font-bold text-sm truncate'}>{pick.event.title}</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-400">Your pick:</span>
-                <span className="text-xs font-bold text-game-accent">
+                <span className={psg1 ? 'text-balatro-sm font-pixel-body text-gray-500' : 'text-xs text-gray-400'}>Your pick:</span>
+                <span className={psg1 ? 'text-balatro-sm font-pixel-body text-emerald-400' : 'text-xs font-bold text-game-accent'}>
                   {pickedLabel}
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className={psg1 ? 'text-balatro-sm font-pixel-body text-gray-600' : 'text-xs text-gray-500'}>
                   @ {formatProbability(pick.probability_snapshot)}
                 </span>
               </div>
@@ -154,14 +187,23 @@ export function QueueCard({
           {/* REVEAL button */}
           <motion.button
             onClick={onReveal}
-            className="w-full max-w-xs px-6 py-3 bg-gradient-to-r from-game-gold to-amber-500 text-black font-bold rounded-lg shadow-lg"
+            className={psg1
+              ? 'w-full max-w-xs px-6 py-3 bg-gradient-to-r from-emerald-400 to-emerald-500 text-black font-pixel-heading text-balatro-base rounded-2xl shadow-lg'
+              : 'w-full max-w-xs px-6 py-3 bg-gradient-to-r from-game-gold to-amber-500 text-black font-bold rounded-lg shadow-lg'
+            }
             animate={{
               scale: [1, 1.03, 1],
-              boxShadow: [
-                '0 0 20px rgba(255, 215, 0, 0.4)',
-                '0 0 35px rgba(255, 215, 0, 0.7)',
-                '0 0 20px rgba(255, 215, 0, 0.4)',
-              ],
+              boxShadow: psg1
+                ? [
+                    '0 0 20px rgba(52, 211, 153, 0.4)',
+                    '0 0 35px rgba(52, 211, 153, 0.7)',
+                    '0 0 20px rgba(52, 211, 153, 0.4)',
+                  ]
+                : [
+                    '0 0 20px rgba(255, 215, 0, 0.4)',
+                    '0 0 35px rgba(255, 215, 0, 0.7)',
+                    '0 0 20px rgba(255, 215, 0, 0.4)',
+                  ],
             }}
             transition={{
               duration: 1.5,
@@ -177,7 +219,7 @@ export function QueueCard({
             </span>
           </motion.button>
           {focused && (
-            <p className="mt-2 text-xs text-gray-500">[B] Reveal</p>
+            <p className={psg1 ? 'mt-2 text-balatro-sm font-pixel-body text-gray-500' : 'mt-2 text-xs text-gray-500'}>[B] Reveal</p>
           )}
         </div>
       </motion.div>
@@ -187,7 +229,7 @@ export function QueueCard({
   // Default card state (pending, locked, revealed)
   return (
     <motion.div
-      className={`p-3 rounded border-2 ${stateClasses} transition-all ${focused ? 'psg1-focus' : ''}`}
+      className={`${psg1 ? 'p-4 rounded-2xl border' : 'p-3 rounded border-2'} ${stateClasses} transition-all ${focused ? 'psg1-focus' : ''}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: position * 0.1 }}
@@ -197,13 +239,21 @@ export function QueueCard({
         <div
           className={`
             w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0
-            ${isRevealed
-              ? pick.is_correct
-                ? 'bg-game-success text-black'
-                : 'bg-game-failure text-white'
-              : isNext
-                ? 'bg-game-gold text-black'
-                : 'bg-game-secondary text-white'
+            ${psg1
+              ? isRevealed
+                ? pick.is_correct
+                  ? 'bg-emerald-400 text-black'
+                  : 'bg-red-400 text-white'
+                : isNext
+                  ? 'bg-emerald-400 text-black'
+                  : 'bg-white/[0.06] text-white'
+              : isRevealed
+                ? pick.is_correct
+                  ? 'bg-game-success text-black'
+                  : 'bg-game-failure text-white'
+                : isNext
+                  ? 'bg-game-gold text-black'
+                  : 'bg-game-secondary text-white'
             }
           `}
         >
@@ -213,15 +263,15 @@ export function QueueCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Event title */}
-          <p className="font-bold text-sm truncate">{pick.event.title}</p>
+          <p className={psg1 ? 'font-pixel-heading text-balatro-base text-white truncate' : 'font-bold text-sm truncate'}>{pick.event.title}</p>
 
           {/* Pick info */}
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-gray-400">Your pick:</span>
-            <span className="text-xs font-bold text-game-accent">
+            <span className={psg1 ? 'text-balatro-sm font-pixel-body text-gray-500' : 'text-xs text-gray-400'}>Your pick:</span>
+            <span className={psg1 ? 'text-balatro-sm font-pixel-body text-emerald-400' : 'text-xs font-bold text-game-accent'}>
               {pickedLabel}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className={psg1 ? 'text-balatro-sm font-pixel-body text-gray-600' : 'text-xs text-gray-500'}>
               @ {formatProbability(pick.probability_snapshot)}
             </span>
           </div>
@@ -234,14 +284,15 @@ export function QueueCard({
               animate={{ opacity: 1, y: 0 }}
             >
               <span
-                className={`text-xs font-bold ${
-                  pick.is_correct ? 'text-game-success' : 'text-game-failure'
-                }`}
+                className={psg1
+                  ? `text-balatro-sm font-pixel-body ${pick.is_correct ? 'text-emerald-400' : 'text-red-400'}`
+                  : `text-xs font-bold ${pick.is_correct ? 'text-game-success' : 'text-game-failure'}`
+                }
               >
                 {statusText}
               </span>
               {pick.is_correct && (
-                <span className="text-xs text-game-gold font-bold">
+                <span className={psg1 ? 'text-balatro-sm font-pixel-body text-emerald-400' : 'text-xs text-game-gold font-bold'}>
                   +${pick.points_awarded.toFixed(2)}
                 </span>
               )}
@@ -255,7 +306,7 @@ export function QueueCard({
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              <span className="text-xs text-gray-500">
+              <span className={psg1 ? 'text-balatro-sm font-pixel-body text-gray-600' : 'text-xs text-gray-500'}>
                 {pick.is_resolved ? 'En cola...' : 'Esperando resultado...'}
               </span>
             </motion.div>
@@ -265,15 +316,26 @@ export function QueueCard({
         {/* Status indicator */}
         <div className="flex-shrink-0 text-right">
           <span
-            className={`text-xs font-bold uppercase ${
-              isRevealed
-                ? pick.is_correct
-                  ? 'text-game-success'
-                  : 'text-game-failure'
-                : isNext && pick.is_resolved
-                  ? 'text-game-gold'
-                  : 'text-gray-500'
-            }`}
+            className={psg1
+              ? `text-balatro-sm font-pixel-body uppercase ${
+                  isRevealed
+                    ? pick.is_correct
+                      ? 'text-emerald-400'
+                      : 'text-red-400'
+                    : isNext && pick.is_resolved
+                      ? 'text-emerald-400'
+                      : 'text-gray-600'
+                }`
+              : `text-xs font-bold uppercase ${
+                  isRevealed
+                    ? pick.is_correct
+                      ? 'text-game-success'
+                      : 'text-game-failure'
+                    : isNext && pick.is_resolved
+                      ? 'text-game-gold'
+                      : 'text-gray-500'
+                }`
+            }
           >
             {statusText}
           </span>
