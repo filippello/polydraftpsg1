@@ -33,6 +33,12 @@ export function QueueCard({
         ? pick.event.outcome_b_label
         : pick.event.outcome_draw_label || 'Draw';
 
+  // For PSG1, show abbreviated labels to fit the small screen
+  const abbreviate = (name: string) => name.split(' ').pop()?.slice(0, 3).toUpperCase() ?? name.slice(0, 3).toUpperCase();
+  const shortTitle = psg1
+    ? `${abbreviate(pick.event.outcome_a_label)} vs ${abbreviate(pick.event.outcome_b_label)}`
+    : pick.event.title;
+
   // Determine if this is the "chest ready" state
   const isChestReady = isNext && pick.is_resolved && !isRevealed;
 
@@ -115,7 +121,7 @@ export function QueueCard({
               {position}
             </div>
             <div className="flex-1 min-w-0">
-              <p className={psg1 ? 'font-pixel-heading text-balatro-base text-white truncate' : 'font-bold text-sm truncate'}>{pick.event.title}</p>
+              <p className={psg1 ? 'font-pixel-heading text-balatro-base text-white truncate' : 'font-bold text-sm truncate'}>{shortTitle}</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className={psg1 ? 'text-balatro-sm font-pixel-body text-gray-500' : 'text-xs text-gray-400'}>Your pick:</span>
                 <span className={psg1 ? 'text-balatro-sm font-pixel-body text-emerald-400' : 'text-xs font-bold text-game-accent'}>
@@ -263,7 +269,7 @@ export function QueueCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Event title */}
-          <p className={psg1 ? 'font-pixel-heading text-balatro-base text-white truncate' : 'font-bold text-sm truncate'}>{pick.event.title}</p>
+          <p className={psg1 ? 'font-pixel-heading text-balatro-base text-white truncate' : 'font-bold text-sm truncate'}>{shortTitle}</p>
 
           {/* Pick info */}
           <div className="flex items-center gap-2 mt-1">

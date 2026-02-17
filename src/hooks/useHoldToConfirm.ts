@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { type MotionValue, animate } from 'framer-motion';
 import { GP, isGamepadButtonPressed, getDpadDirection } from '@/lib/gamepad';
 
@@ -17,6 +17,12 @@ interface UseHoldToConfirmReturn {
 }
 
 const MAX_DISPLACEMENT = 260;
+// Number of consecutive "released" frames before cancelling a charge.
+// ~130ms at 60fps — handles Retroid hardware button flicker.
+const RELEASE_THRESHOLD = 8;
+// Frames to wait after enabled transitions true before accepting charges.
+// Lets the Gamepad API settle and ensures clean prev-state/gate tracking.
+const ENABLE_WARMUP = 15; // ~250ms at 60fps
 
 export function useHoldToConfirm({
   enabled,
@@ -29,181 +35,178 @@ export function useHoldToConfirm({
   const [chargeDirection, setChargeDirection] = useState<'left' | 'right' | null>(null);
   const [chargeProgress, setChargeProgress] = useState(0);
 
-  const rafRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-  const directionRef = useRef<'left' | 'right' | null>(null);
-  const completedRef = useRef(false);
-  const lastProgressUpdateRef = useRef(0);
-
-  // Gamepad polling refs
-  const gamepadRafRef = useRef<number | null>(null);
-  const prevBRef = useRef(false);
-  const prevYRef = useRef(false);
-  const prevXRef = useRef(false);
-
-  const cleanup = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    startTimeRef.current = null;
-    directionRef.current = null;
-    completedRef.current = false;
-    lastProgressUpdateRef.current = 0;
-    setChargeDirection(null);
-    setChargeProgress(0);
-  }, []);
-
-  const snapBack = useCallback(() => {
-    cleanup();
-    animate(motionX, 0, { type: 'spring', stiffness: 300, damping: 30 });
-  }, [cleanup, motionX]);
+  // All external values in refs for stable closure (empty deps effect)
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
+  const motionXRef = useRef(motionX);
+  motionXRef.current = motionX;
+  const holdDurationRef = useRef(holdDuration);
+  holdDurationRef.current = holdDuration;
+  const onYesRef = useRef(onYes);
+  onYesRef.current = onYes;
+  const onNoRef = useRef(onNo);
+  onNoRef.current = onNo;
+  const onPassRef = useRef(onPass);
+  onPassRef.current = onPass;
 
   useEffect(() => {
-    if (!enabled) {
-      cleanup();
-      return;
-    }
+    let rafId: number | null = null;
 
-    const tick = (now: number) => {
-      if (startTimeRef.current === null || directionRef.current === null) return;
+    // All charge state is LOCAL to this closure
+    let chargeDir: 'left' | 'right' | null = null;
+    let chargeStart: number | null = null;
+    let lastProgressUpdate = 0;
 
-      const elapsed = now - startTimeRef.current;
-      const progress = Math.min(elapsed / holdDuration, 1);
-      // Cubic ease-in: slow start, accelerating
-      const eased = progress * progress * progress;
-
-      const displacement = directionRef.current === 'right'
-        ? eased * MAX_DISPLACEMENT
-        : eased * -MAX_DISPLACEMENT;
-
-      motionX.set(displacement);
-
-      // Throttle React state updates to ~15fps
-      if (now - lastProgressUpdateRef.current > 66) {
-        setChargeProgress(progress);
-        lastProgressUpdateRef.current = now;
-      }
-
-      if (progress >= 1) {
-        completedRef.current = true;
-        setChargeProgress(1);
-        const dir = directionRef.current;
-        // Reset refs before calling handler (handler may trigger re-renders)
-        directionRef.current = null;
-        startTimeRef.current = null;
-        rafRef.current = null;
-        setChargeDirection(null);
-        setChargeProgress(0);
-
-        if (dir === 'right') {
-          onYes();
-        } else {
-          onNo();
-        }
-        return;
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    const startCharge = (dir: 'left' | 'right') => {
-      if (directionRef.current !== null) return;
-      directionRef.current = dir;
-      completedRef.current = false;
-      startTimeRef.current = performance.now();
-      lastProgressUpdateRef.current = 0;
-      setChargeDirection(dir);
-      setChargeProgress(0);
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    const stopCharge = (dir: 'left' | 'right') => {
-      if (directionRef.current === dir && !completedRef.current) {
-        snapBack();
-      }
-    };
-
-    // --- Keyboard handlers ---
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        onPass();
-        return;
-      }
-
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        startCharge(e.key === 'ArrowRight' ? 'right' : 'left');
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        stopCharge(e.key === 'ArrowRight' ? 'right' : 'left');
-      }
-    };
-
-    // --- Gamepad polling (buttons + D-pad) ---
-    let prevRight = false;
-    let prevLeft = false;
+    // Gamepad prev-state (local to closure)
+    let prevB = false;
+    let prevY = false;
+    let prevX = false;
     let prevDown = false;
+    let rightGateOpen = false;
+    let leftGateOpen = false;
+    let passGateOpen = false;
 
-    const pollGamepad = () => {
+    // Frame counter for release detection (replaces setTimeout debounce)
+    let releaseFrames = 0;
+
+    // Enable-transition warmup: tracks whether we were previously enabled
+    // and counts down frames before accepting charges after enable.
+    let wasEnabled = false;
+    let warmup = 0;
+
+    const snapBack = () => {
+      chargeDir = null;
+      chargeStart = null;
+      lastProgressUpdate = 0;
+      releaseFrames = 0;
+      setChargeDirection(null);
+      setChargeProgress(0);
+      animate(motionXRef.current, 0, { type: 'spring', stiffness: 300, damping: 30 });
+    };
+
+    const loop = (now: number) => {
+      // --- Disabled: reset charge + prev-state, keep looping ---
+      if (!enabledRef.current) {
+        if (chargeDir !== null) snapBack();
+        prevB = prevY = prevX = prevDown = false;
+        rightGateOpen = leftGateOpen = passGateOpen = false;
+        wasEnabled = false;
+        rafId = requestAnimationFrame(loop);
+        return;
+      }
+
+      // --- Enable-transition warmup ---
+      // When enabled goes from false→true (or on first enabled frame),
+      // read gamepad to build accurate prev-state/gates but don't
+      // start charges for ENABLE_WARMUP frames.
+      if (!wasEnabled) {
+        wasEnabled = true;
+        warmup = ENABLE_WARMUP;
+      }
+
+      // --- Read gamepad ---
       const bNow = isGamepadButtonPressed(GP.B);
       const yNow = isGamepadButtonPressed(GP.Y);
       const xNow = isGamepadButtonPressed(GP.X);
       const dpad = getDpadDirection();
 
-      // B button → YES (hold)
-      if (bNow && !prevBRef.current) startCharge('right');
-      if (!bNow && prevBRef.current) stopCharge('right');
+      // --- Gates: require release before accepting after enable ---
+      if (!rightGateOpen && !bNow) rightGateOpen = true;
+      if (!leftGateOpen && !yNow) leftGateOpen = true;
+      if (!passGateOpen && !xNow && !dpad.down) passGateOpen = true;
 
-      // Y button → NO (hold)
-      if (yNow && !prevYRef.current) startCharge('left');
-      if (!yNow && prevYRef.current) stopCharge('left');
+      // During warmup: track prev-state and gates, but don't start charges
+      if (warmup > 0) {
+        warmup--;
+        prevB = bNow;
+        prevY = yNow;
+        prevX = xNow;
+        prevDown = dpad.down;
+        rafId = requestAnimationFrame(loop);
+        return;
+      }
 
-      // X button → PASS (instant)
-      if (xNow && !prevXRef.current) onPass();
+      // --- Start charge on rising edge ---
+      if (chargeDir === null) {
+        if (rightGateOpen && bNow && !prevB) {
+          motionXRef.current.stop();
+          chargeDir = 'right';
+          chargeStart = now;
+          releaseFrames = 0;
+          lastProgressUpdate = 0;
+          setChargeDirection('right');
+          setChargeProgress(0);
+        }
+        if (leftGateOpen && yNow && !prevY) {
+          motionXRef.current.stop();
+          chargeDir = 'left';
+          chargeStart = now;
+          releaseFrames = 0;
+          lastProgressUpdate = 0;
+          setChargeDirection('left');
+          setChargeProgress(0);
+        }
+      }
 
-      // D-pad right → YES (hold), same as ArrowRight
-      if (dpad.right && !prevRight) startCharge('right');
-      if (!dpad.right && prevRight) stopCharge('right');
+      // --- Active charge: animate + check release ---
+      if (chargeDir !== null && chargeStart !== null) {
+        const held = chargeDir === 'right' ? bNow : yNow;
 
-      // D-pad left → NO (hold), same as ArrowLeft
-      if (dpad.left && !prevLeft) startCharge('left');
-      if (!dpad.left && prevLeft) stopCharge('left');
+        if (held) {
+          releaseFrames = 0;
+        } else {
+          releaseFrames++;
+        }
 
-      // D-pad down → PASS, same as ArrowDown
-      if (dpad.down && !prevDown) onPass();
+        if (releaseFrames >= RELEASE_THRESHOLD) {
+          snapBack();
+        } else {
+          const elapsed = now - chargeStart;
+          const progress = Math.min(elapsed / holdDurationRef.current, 1);
+          const eased = progress * progress * progress;
+          const displacement = chargeDir === 'right'
+            ? eased * MAX_DISPLACEMENT
+            : eased * -MAX_DISPLACEMENT;
 
-      prevBRef.current = bNow;
-      prevYRef.current = yNow;
-      prevXRef.current = xNow;
-      prevRight = dpad.right;
-      prevLeft = dpad.left;
+          motionXRef.current.set(displacement);
+
+          // Throttle React state updates to ~15fps
+          if (now - lastProgressUpdate > 66) {
+            setChargeProgress(progress);
+            lastProgressUpdate = now;
+          }
+
+          if (progress >= 1) {
+            setChargeProgress(1);
+            const dir = chargeDir;
+            chargeDir = null;
+            chargeStart = null;
+            setChargeDirection(null);
+            setChargeProgress(0);
+            if (dir === 'right') onYesRef.current();
+            else onNoRef.current();
+          }
+        }
+      }
+
+      // --- PASS (instant) ---
+      if (passGateOpen && xNow && !prevX) onPassRef.current();
+      if (passGateOpen && dpad.down && !prevDown) onPassRef.current();
+
+      // --- Update prev-state ---
+      prevB = bNow;
+      prevY = yNow;
+      prevX = xNow;
       prevDown = dpad.down;
 
-      gamepadRafRef.current = requestAnimationFrame(pollGamepad);
+      rafId = requestAnimationFrame(loop);
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    gamepadRafRef.current = requestAnimationFrame(pollGamepad);
-
+    rafId = requestAnimationFrame(loop);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-      }
-      if (gamepadRafRef.current !== null) {
-        cancelAnimationFrame(gamepadRafRef.current);
-      }
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [enabled, holdDuration, motionX, onYes, onNo, onPass, cleanup, snapBack]);
+  }, []); // empty deps — runs once on mount, never re-runs
 
   return { chargeDirection, chargeProgress };
 }

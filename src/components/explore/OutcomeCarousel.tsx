@@ -76,7 +76,8 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
-  const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0.5, 1, 1, 1, 0.5]);
+  // Card opacity derived from drag position (web only, not used in style to avoid FM v12 conflict)
+  const cardDragOpacity = useTransform(x, [-200, -100, 0, 100, 200], [0.5, 1, 1, 1, 0.5]);
 
   // Overlay opacities
   const yesOverlayOpacity = useTransform(x, [0, 100], [0, 1]);
@@ -127,14 +128,20 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
     handleNo();
   }, [triggerScreenShake, handleNo]);
 
-  // Hold-to-confirm for PSG1 keyboard
+  // Hold-to-confirm for PSG1 gamepad.
+  // IMPORTANT: use a SEPARATE MotionValue (holdX) — NOT the card's x.
+  // The card's x is in style={{ x }} and controlled by FM's animate prop.
+  // If we pass the card's x to useHoldToConfirm, the hook's motionX.set()
+  // fights with FM's animate spring → card jumps.
+  // (This matches the pattern in pack/open which uses a separate swipeX.)
   const psg1 = isPSG1();
+  const holdX = useMotionValue(0);
   const { chargeDirection, chargeProgress } = useHoldToConfirm({
     enabled: psg1 && !hasFinished && !showPurchaseModal,
     onYes: handleHoldYes,
     onNo: handleHoldNo,
     onPass: handlePass,
-    motionX: x,
+    motionX: holdX,
   });
 
   // Escape / Gamepad A to go back (PSG1 only)
@@ -272,7 +279,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
         <motion.div
           key={currentOutcome.id}
           className="absolute inset-4 z-10"
-          style={{ x, y, rotate, opacity }}
+          style={{ x, y, rotate, opacity: psg1 ? undefined : cardDragOpacity }}
           drag={!psg1}
           dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
           dragElastic={0.8}
@@ -285,11 +292,14 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                 ? { x: 400, rotate: 20, opacity: 0 }
                 : exitDirection === 'down'
                   ? { y: 400, opacity: 0 }
-                  : { scale: 1 + chargeProgress * 0.07, opacity: 1, x: 0, y: 0 }
+                  : { scale: 1, opacity: 1, x: 0, y: 0 }
           }
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         >
-          <div className="w-full h-full bg-card-bg border-balatro-thick border-purple-500/40 rounded-balatro-card shadow-hard-lg overflow-hidden flex flex-col">
+          <div
+            className="w-full h-full bg-card-bg border-balatro-thick border-purple-500/40 rounded-balatro-card shadow-hard-lg overflow-hidden flex flex-col"
+            style={chargeProgress > 0 ? { transform: `scale(${1 + chargeProgress * 0.07})` } : undefined}
+          >
             {/* Inner border */}
             <div className="balatro-card-inner border-purple-400/20" />
 
