@@ -406,9 +406,15 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
 
               {/* Bottom info section */}
               <div className={psg1 ? "px-4 py-2" : "p-4"}>
-                <h2 className={`font-bold text-center mb-2 font-pixel-body leading-tight ${psg1 ? 'text-base' : 'text-xl'}`}>
+                <h2 className={`font-bold text-center font-pixel-body leading-tight ${psg1 ? 'text-base mb-1' : 'text-xl mb-2'}`}>
                   {currentOutcome.label}
                 </h2>
+
+                {psg1 && (
+                  <p className="text-2xl font-bold text-purple-400 font-pixel-heading text-center mb-1">
+                    {formatProbability(currentOutcome.probability)}
+                  </p>
+                )}
 
                 {!psg1 && (
                   <p className="text-4xl font-bold text-purple-400 font-pixel-heading text-center mb-3">
@@ -491,20 +497,22 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
         </motion.div>
       </div>
 
-      {/* Progress dots */}
-      <div className="flex justify-center gap-1.5 pb-4">
-        {outcomes.map((_, i) => (
-          <div
-            key={i}
-            className={`w-2 h-2 rounded-full transition-all ${i === currentOutcomeIndex
-                ? 'bg-purple-500 scale-125'
-                : i < currentOutcomeIndex
-                  ? 'bg-purple-500/50'
-                  : 'bg-gray-700'
-              }`}
-          />
-        ))}
-      </div>
+      {/* Progress dots (hidden on PSG1 to save vertical space) */}
+      {!psg1 && (
+        <div className="flex justify-center gap-1.5 pb-4">
+          {outcomes.map((_, i) => (
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full transition-all ${i === currentOutcomeIndex
+                  ? 'bg-purple-500 scale-125'
+                  : i < currentOutcomeIndex
+                    ? 'bg-purple-500/50'
+                    : 'bg-gray-700'
+                }`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Purchase Modal */}
       {pendingSwipe && (
