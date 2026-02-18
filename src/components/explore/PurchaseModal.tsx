@@ -515,21 +515,23 @@ export function PurchaseModal({
               {/* Content */}
               <div className="p-3">
                 {/* Outcome info (always shown) */}
-                <div className={`relative w-full ${psg1 ? 'h-36' : 'h-24'} rounded-lg overflow-hidden mb-3 border-2 border-white/10`}>
-                  {imageUrl && !imageError ? (
-                    <Image
-                      src={imageUrl}
-                      alt={outcome.label}
-                      fill
-                      className="object-cover"
-                      onError={() => setImageError(true)}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-purple-600/30 to-indigo-600/30 flex items-center justify-center">
-                      <span className="text-5xl">{getCategoryEmoji(market.category)}</span>
-                    </div>
-                  )}
-                </div>
+                {!psg1 && (
+                  <div className="relative w-full h-24 rounded-lg overflow-hidden mb-3 border-2 border-white/10">
+                    {imageUrl && !imageError ? (
+                      <Image
+                        src={imageUrl}
+                        alt={outcome.label}
+                        fill
+                        className="object-cover"
+                        onError={() => setImageError(true)}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-purple-600/30 to-indigo-600/30 flex items-center justify-center">
+                        <span className="text-5xl">{getCategoryEmoji(market.category)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <h3 className="text-base font-bold text-center mb-1 font-pixel-body">
                   {outcome.label}
