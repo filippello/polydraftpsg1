@@ -17,40 +17,67 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
   }, []);
 
   // Fix MWA 404 on Android: After authorize(), Jupiter Mobile returns
-  // wallet_uri_base "https://jup.ag/solana-wallet-adapter" which is stored
-  // in-memory on the wallet object. When signMessage() triggers a new transact(),
-  // it reads wallet_uri_base from memory and calls:
+  // wallet_uri_base "https://jup.ag/solana-wallet-adapter" stored in-memory.
+  // When signMessage() triggers a new transact(), MWA calls:
   //   window.location.assign("https://jup.ag/solana-wallet-adapter/v1/associate/local?...")
-  // This navigates to jup.ag which returns 404.
+  // This navigates to jup.ag → 404.
   //
-  // Fix: Intercept Location.prototype.assign and rewrite any HTTPS MWA association
-  // URLs to use the solana-wallet:// intent protocol instead.
+  // Fix: Use the Navigation API (Chrome 102+) to intercept the navigation
+  // and rewrite it to solana-wallet:// intent protocol. Also patch
+  // Location.prototype.assign as a fallback.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!/android/i.test(navigator.userAgent)) return;
 
-    const originalAssign = Location.prototype.assign;
-    Location.prototype.assign = function (url: string | URL) {
-      const urlStr = typeof url === 'string' ? url : url.toString();
-      // Detect MWA association URLs that use HTTPS instead of solana-wallet://
-      if (urlStr.includes('/v1/associate/local')) {
-        try {
-          const parsed = new URL(urlStr);
-          if (parsed.protocol === 'https:') {
-            // Rewrite to solana-wallet:// so Android fires the intent
-            const rewritten = new URL('solana-wallet:/v1/associate/local');
-            rewritten.search = parsed.search;
-            return originalAssign.call(this, rewritten.toString());
-          }
-        } catch {
-          // fall through to original
+    function rewriteMwaUrl(urlStr: string): string | null {
+      if (!urlStr.includes('/v1/associate/local')) return null;
+      try {
+        const parsed = new URL(urlStr);
+        if (parsed.protocol === 'https:') {
+          const rewritten = new URL('solana-wallet:/v1/associate/local');
+          rewritten.search = parsed.search;
+          return rewritten.toString();
         }
+      } catch {
+        // not a valid URL
       }
-      return originalAssign.call(this, url);
-    };
+      return null;
+    }
+
+    // Strategy 1: Navigation API (Chrome 102+) - intercepts programmatic navigations
+    let navController: AbortController | undefined;
+    if ('navigation' in window) {
+      navController = new AbortController();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).navigation.addEventListener('navigate', (event: any) => {
+        const rewritten = rewriteMwaUrl(event.destination.url);
+        if (rewritten) {
+          event.preventDefault();
+          // Use location.href for custom protocol (intent)
+          window.location.href = rewritten;
+        }
+      }, { signal: navController.signal });
+    }
+
+    // Strategy 2: Patch Location.prototype.assign as fallback
+    const originalAssign = Location.prototype.assign;
+    try {
+      Location.prototype.assign = function (url: string | URL) {
+        const urlStr = typeof url === 'string' ? url : url.toString();
+        const rewritten = rewriteMwaUrl(urlStr);
+        if (rewritten) {
+          window.location.href = rewritten;
+          return;
+        }
+        return originalAssign.call(this, url);
+      };
+    } catch {
+      // Some browsers may not allow patching Location.prototype
+    }
 
     return () => {
-      Location.prototype.assign = originalAssign;
+      navController?.abort();
+      try { Location.prototype.assign = originalAssign; } catch { /* noop */ }
     };
   }, []);
 
