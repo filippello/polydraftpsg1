@@ -27,8 +27,8 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
           metadata: {
             name: 'Polydraft',
             description: 'Prediction Markets on Jupiter',
-            url: 'https://polydraft.app',
-            iconUrls: ['https://polydraft.app/icon.png'],
+            url: 'https://polydraftpsg1.vercel.app/',
+            iconUrls: ['https://polydraftpsg1.vercel.app/icon.png'],
           },
           theme: 'jupiter',
           lang: 'en',
