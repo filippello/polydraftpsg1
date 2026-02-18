@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ExploreMarket, ExploreOutcome } from '@/lib/jupiter/types';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useUnifiedWalletContext } from '@jup-ag/wallet-adapter';
 import { VersionedTransaction } from '@solana/web3.js';
@@ -14,6 +14,7 @@ import {
 import { getSolscanUrl } from '@/lib/jupiter/transaction';
 import { ShareButton } from './ShareButton';
 import { isPSG1 } from '@/lib/platform';
+import { GP, isGamepadButtonPressed, getDpadDirection } from '@/lib/gamepad';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -248,6 +249,13 @@ export function PurchaseModal({
     if (!psg1 || !isOpen || isProcessing) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Android B-button back navigation keys
+      if (e.key === 'GoBack' || e.key === 'BrowserBack') {
+        e.preventDefault();
+        handleCancel();
+        return;
+      }
+
       if (purchaseState === 'select_amount' && hasJupiterMarket) {
         // 6 items: 4 amounts (0-3), Cancel (4), Confirm (5)
         const totalItems = PRESET_AMOUNTS.length + 2;
@@ -320,6 +328,137 @@ export function PurchaseModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [psg1, isOpen, isProcessing, purchaseState, hasJupiterMarket, psg1FocusIndex, handleCancel, handleConfirm, handleRetry]);
 
+  // --- Gamepad polling (B=confirm, A=cancel, D-pad=navigate) ---
+  const handleCancelRef = useRef(handleCancel);
+  handleCancelRef.current = handleCancel;
+  const handleConfirmRef = useRef(handleConfirm);
+  handleConfirmRef.current = handleConfirm;
+  const handleRetryRef = useRef(handleRetry);
+  handleRetryRef.current = handleRetry;
+  const purchaseStateRef = useRef(purchaseState);
+  purchaseStateRef.current = purchaseState;
+  const hasJupiterMarketRef = useRef(hasJupiterMarket);
+  hasJupiterMarketRef.current = hasJupiterMarket;
+  const psg1FocusIndexRef = useRef(psg1FocusIndex);
+  psg1FocusIndexRef.current = psg1FocusIndex;
+
+  useEffect(() => {
+    if (!psg1 || !isOpen || isProcessing) return;
+
+    let rafId: number | null = null;
+    // Snapshot current button state so held buttons aren't detected as new presses
+    let prevB = isGamepadButtonPressed(GP.B);
+    let prevA = isGamepadButtonPressed(GP.A);
+    const initDpad = getDpadDirection();
+    let prevUp = initDpad.up;
+    let prevDown = initDpad.down;
+    let prevLeft = initDpad.left;
+    let prevRight = initDpad.right;
+
+    const poll = () => {
+      const bNow = isGamepadButtonPressed(GP.B);
+      const aNow = isGamepadButtonPressed(GP.A);
+      const dpad = getDpadDirection();
+
+      const state = purchaseStateRef.current;
+      const focusIdx = psg1FocusIndexRef.current;
+      const hasMarket = hasJupiterMarketRef.current;
+
+      // B button (rising edge) → confirm action
+      if (bNow && !prevB) {
+        if (state === 'select_amount' && hasMarket) {
+          if (focusIdx < PRESET_AMOUNTS.length) {
+            // Amount selected, jump to Confirm
+            setPsg1FocusIndex(PRESET_AMOUNTS.length + 1);
+          } else if (focusIdx === PRESET_AMOUNTS.length) {
+            handleCancelRef.current();
+          } else {
+            handleConfirmRef.current();
+          }
+        } else if (state === 'success') {
+          handleCancelRef.current(); // "Done"
+        } else if (state === 'error') {
+          if (focusIdx === 0) handleCancelRef.current();
+          else handleRetryRef.current();
+        }
+      }
+
+      // A button (rising edge) → cancel
+      if (aNow && !prevA) {
+        handleCancelRef.current();
+      }
+
+      // D-pad navigation (rising edge only)
+      if (state === 'select_amount' && hasMarket) {
+        const totalItems = PRESET_AMOUNTS.length + 2;
+        if (dpad.left && !prevLeft) {
+          setPsg1FocusIndex((prev) => Math.max(0, prev - 1));
+        }
+        if (dpad.right && !prevRight) {
+          setPsg1FocusIndex((prev) => Math.min(totalItems - 1, prev + 1));
+        }
+        if (dpad.down && !prevDown) {
+          // From amounts row → jump to Cancel
+          if (focusIdx < PRESET_AMOUNTS.length) {
+            setPsg1FocusIndex(PRESET_AMOUNTS.length);
+          }
+        }
+        if (dpad.up && !prevUp) {
+          // From actions row → jump back to amounts
+          if (focusIdx >= PRESET_AMOUNTS.length) {
+            setPsg1FocusIndex(0);
+          }
+        }
+      } else if (state === 'error') {
+        if (dpad.left && !prevLeft) setPsg1FocusIndex((prev) => (prev === 0 ? 1 : 0));
+        if (dpad.right && !prevRight) setPsg1FocusIndex((prev) => (prev === 0 ? 1 : 0));
+      }
+
+      prevB = bNow;
+      prevA = aNow;
+      prevUp = dpad.up;
+      prevDown = dpad.down;
+      prevLeft = dpad.left;
+      prevRight = dpad.right;
+      rafId = requestAnimationFrame(poll);
+    };
+
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, isOpen, isProcessing]);
+
+  // --- Prevent Chrome back navigation from B button on Android ---
+  // Push a dummy history entry when modal opens; intercept popstate to cancel instead of navigating away
+  const pushedHistoryRef = useRef(false);
+
+  useEffect(() => {
+    if (!psg1 || !isOpen) return;
+
+    // Push dummy history entry
+    window.history.pushState({ purchaseModal: true }, '');
+    pushedHistoryRef.current = true;
+
+    const handlePopState = () => {
+      // Chrome popped our dummy entry (B button back) — cancel the modal instead
+      if (pushedHistoryRef.current) {
+        pushedHistoryRef.current = false;
+        handleCancelRef.current();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Clean up dummy entry if modal closes normally (not via back button)
+      if (pushedHistoryRef.current) {
+        pushedHistoryRef.current = false;
+        window.history.back();
+      }
+    };
+  }, [psg1, isOpen]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -339,9 +478,12 @@ export function PurchaseModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-x-4 top-4 z-50 max-w-sm mx-auto"
+            className={psg1
+              ? 'fixed inset-0 z-50 flex items-center justify-center p-4'
+              : 'fixed inset-x-4 top-4 z-50 max-w-sm mx-auto'
+            }
           >
-            <div className="bg-card-bg border-balatro-thick border-purple-500/40 rounded-balatro-card shadow-hard-lg overflow-hidden">
+            <div className={`bg-card-bg border-balatro-thick border-purple-500/40 rounded-balatro-card shadow-hard-lg overflow-hidden ${psg1 ? 'w-full max-w-md' : ''}`}>
               {/* Inner border */}
               <div className="balatro-card-inner border-purple-400/20" />
 
@@ -373,7 +515,7 @@ export function PurchaseModal({
               {/* Content */}
               <div className="p-3">
                 {/* Outcome info (always shown) */}
-                <div className="relative w-full h-24 rounded-lg overflow-hidden mb-3 border-2 border-white/10">
+                <div className={`relative w-full ${psg1 ? 'h-36' : 'h-24'} rounded-lg overflow-hidden mb-3 border-2 border-white/10`}>
                   {imageUrl && !imageError ? (
                     <Image
                       src={imageUrl}
@@ -432,7 +574,7 @@ export function PurchaseModal({
                           <button
                             key={amount}
                             onClick={() => setSelectedAmount(amount)}
-                            className={`py-2.5 rounded-lg font-bold text-base transition-all ${
+                            className={`${psg1 ? 'py-3.5' : 'py-2.5'} rounded-lg font-bold text-base transition-all ${
                               selectedAmount === amount
                                 ? isYes
                                   ? 'bg-green-500 text-white scale-105'
@@ -472,14 +614,14 @@ export function PurchaseModal({
                     <div className="flex gap-2">
                       <button
                         onClick={handleCancel}
-                        className={`flex-1 py-2.5 rounded-lg bg-white/10 text-white font-bold hover:bg-white/20 transition-colors ${psg1 && psg1FocusIndex === PRESET_AMOUNTS.length ? 'psg1-focus' : ''}`}
+                        className={`flex-1 ${psg1 ? 'py-3' : 'py-2.5'} rounded-lg bg-white/10 text-white font-bold hover:bg-white/20 transition-colors ${psg1 && psg1FocusIndex === PRESET_AMOUNTS.length ? 'psg1-focus' : ''}`}
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleConfirm}
                         disabled={!selectedAmount}
-                        className={`flex-1 py-2.5 rounded-lg font-bold transition-all ${
+                        className={`flex-1 ${psg1 ? 'py-3' : 'py-2.5'} rounded-lg font-bold transition-all ${
                           selectedAmount
                             ? isYes
                               ? 'bg-green-500 text-white hover:bg-green-600'
@@ -595,6 +737,20 @@ export function PurchaseModal({
                       >
                         Try Again
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* PSG1 button hints */}
+                {psg1 && !isProcessing && (
+                  <div className="flex items-center justify-center gap-6 pt-3 mt-2 border-t border-white/10">
+                    <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold text-gray-400">B</span>
+                      <span>Confirm</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold text-gray-400">A</span>
+                      <span>Cancel</span>
                     </div>
                   </div>
                 )}
