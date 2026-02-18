@@ -345,6 +345,8 @@ export function PurchaseModal({
   useEffect(() => {
     if (!psg1 || !isOpen || isProcessing) return;
 
+    const GAMEPAD_WARMUP = 15; // ~250ms at 60fps — ignore rising edges while held buttons settle
+    let warmup = GAMEPAD_WARMUP;
     let rafId: number | null = null;
     // Snapshot current button state so held buttons aren't detected as new presses
     let prevB = isGamepadButtonPressed(GP.B);
@@ -359,6 +361,19 @@ export function PurchaseModal({
       const bNow = isGamepadButtonPressed(GP.B);
       const aNow = isGamepadButtonPressed(GP.A);
       const dpad = getDpadDirection();
+
+      // During warmup: track prev-state but skip all rising-edge actions
+      if (warmup > 0) {
+        warmup--;
+        prevB = bNow;
+        prevA = aNow;
+        prevUp = dpad.up;
+        prevDown = dpad.down;
+        prevLeft = dpad.left;
+        prevRight = dpad.right;
+        rafId = requestAnimationFrame(poll);
+        return;
+      }
 
       const state = purchaseStateRef.current;
       const focusIdx = psg1FocusIndexRef.current;
