@@ -157,7 +157,7 @@ canvas {
     @apply shadow-pixel;
   }
 
-  /* Glowing effect */
+  /* Glowing effect (box-shadow on rectangles) */
   .glow-gold {
     animation: glow-pulse 2s ease-in-out infinite;
   }
@@ -169,6 +169,21 @@ canvas {
     }
     50% {
       box-shadow: 0 0 20px var(--game-gold), 0 0 30px var(--game-gold);
+    }
+  }
+
+  /* Pack glow — drop-shadow follows image silhouette, not bounding box */
+  .pack-glow {
+    animation: pack-glow-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pack-glow-pulse {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 6px var(--game-gold)) drop-shadow(0 0 12px var(--game-gold));
+    }
+    50% {
+      filter: drop-shadow(0 0 16px var(--game-gold)) drop-shadow(0 0 28px var(--game-gold));
     }
   }
 

@@ -20,9 +20,10 @@ import {
 import { isPSG1 } from '@/lib/platform';
 import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
+import { PixelDissolve } from '@/components/animations/PixelDissolve';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
 
-type Phase = 'checking' | 'loading' | 'opening' | 'revealing' | 'swiping' | 'confirming' | 'blocked' | 'error';
+type Phase = 'checking' | 'loading' | 'opening' | 'dissolving' | 'revealing' | 'swiping' | 'confirming' | 'blocked' | 'error';
 
 interface PickedEvent {
   event: Event;
@@ -129,9 +130,13 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   // Handle tap to open pack
   const handleOpenPack = () => {
     if (phase === 'opening') {
-      setPhase('revealing');
+      setPhase('dissolving');
     }
   };
+
+  const handleDissolveComplete = useCallback(() => {
+    setPhase('revealing');
+  }, []);
 
   // Reveal cards one by one
   useEffect(() => {
@@ -563,37 +568,51 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
           </motion.div>
         )}
 
-        {/* Opening Phase */}
-        {phase === 'opening' && (
+        {/* Opening / Dissolving Phase */}
+        {(phase === 'opening' || phase === 'dissolving') && (
           <motion.div
             key="opening"
             className="flex-1 flex flex-col items-center justify-center cursor-pointer"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.5 }}
+            exit={{ opacity: 0 }}
             onClick={handleOpenPack}
           >
             <motion.div
-              animate={{
+              animate={phase === 'opening' ? {
                 rotate: [-2, 2, -2, 2, 0],
                 scale: [1, 1.02, 1, 1.02, 1],
-              }}
+              } : {}}
               transition={{
                 duration: 0.3,
                 repeat: Infinity,
               }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={phase === 'opening' ? { scale: 1.05 } : {}}
+              whileTap={phase === 'opening' ? { scale: 0.95 } : {}}
             >
-              <PackSprite type={type as 'sports'} size="lg" glowing />
+              <div className="relative w-64 h-[320px]">
+                <div style={{ visibility: phase === 'dissolving' ? 'hidden' : 'visible' }}>
+                  <PackSprite type={type as 'sports'} size="xl" glowing={phase === 'opening'} />
+                </div>
+                {phase === 'dissolving' && (
+                  <PixelDissolve
+                    imageSrc="/images/packs/sportpack_1.png"
+                    width={256}
+                    height={320}
+                    onComplete={handleDissolveComplete}
+                  />
+                )}
+              </div>
             </motion.div>
-            <motion.p
-              className="mt-6 text-xl font-bold font-pixel-heading tracking-wider"
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              {psg1 ? 'Press \u24B7 to Open' : 'Tap to Open'}
-            </motion.p>
+            {phase === 'opening' && (
+              <motion.p
+                className="mt-6 text-xl font-bold font-pixel-heading tracking-wider"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {psg1 ? 'Press \u24B7 to Open' : 'Tap to Open'}
+              </motion.p>
+            )}
           </motion.div>
         )}
 
