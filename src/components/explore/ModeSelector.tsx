@@ -156,7 +156,7 @@ export function ModeSelector({ className = '' }: ModeSelectorProps) {
               </motion.div>
 
               {/* Title */}
-              <h2 className="text-2xl font-bold font-pixel-heading text-game-gold z-10">
+              <h2 className="text-2xl font-bold font-pixel-heading text-game-gold z-10 text-center">
                 PLAY DRAFT
               </h2>
 
