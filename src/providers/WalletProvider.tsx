@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useEffect, type ReactNode } from 'react';
 import { ConnectionProvider } from '@solana/wallet-adapter-react';
-import { UnifiedWalletProvider, type Adapter } from '@jup-ag/wallet-adapter';
-import { useWrappedReownAdapter } from '@jup-ag/jup-mobile-adapter';
+import { UnifiedWalletProvider } from '@jup-ag/wallet-adapter';
 
 interface SolanaWalletProviderProps {
   children: ReactNode;
@@ -11,35 +10,39 @@ interface SolanaWalletProviderProps {
 
 export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
   const endpoint = useMemo(() => {
-    return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+    if (process.env.NEXT_PUBLIC_SOLANA_RPC_URL) {
+      return process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+    }
+    return 'https://api.mainnet-beta.solana.com';
   }, []);
 
-  const { jupiterAdapter } = useWrappedReownAdapter({
-    appKitOptions: {
-      metadata: {
-        name: 'Polydraft',
-        description: 'Fantasy betting with pixel art packs',
-        url: 'https://polydraftpsg1.vercel.app/',
-        icons: ['https://polydraftpsg1.vercel.app/icons/icon-192x192.png'],
-      },
-      projectId: process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || '01b9a854692b1f29a6aa2bb46f8c0520',
-      features: {
-        analytics: false,
-        socials: false,
-        email: false,
-      },
-      enableWallets: false,
-    },
-  });
+  // Fix MWA 404 on Android: Jupiter Mobile caches wallet_uri_base as "https://jup.ag"
+  // which causes subsequent connections to navigate to https://jup.ag/v1/associate/local?...
+  // instead of using the solana-wallet:// intent protocol. Stripping wallet_uri_base
+  // forces MWA to always use solana-wallet:// which properly launches the Android intent.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!/android/i.test(navigator.userAgent)) return;
 
-  const wallets: Adapter[] = useMemo(() => {
-    return [jupiterAdapter].filter((item) => item && item.name && item.icon) as Adapter[];
-  }, [jupiterAdapter]);
+    const cacheKey = 'SolanaMobileWalletAdapterDefaultAuthorizationCache';
+    const cached = localStorage.getItem(cacheKey);
+    if (!cached) return;
+
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed?.wallet_uri_base) {
+        delete parsed.wallet_uri_base;
+        localStorage.setItem(cacheKey, JSON.stringify(parsed));
+      }
+    } catch {
+      localStorage.removeItem(cacheKey);
+    }
+  }, []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>
       <UnifiedWalletProvider
-        wallets={wallets}
+        wallets={[]}
         config={{
           autoConnect: true,
           env: 'mainnet-beta',
@@ -47,7 +50,7 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
             name: 'Polydraft',
             description: 'Prediction Markets on Jupiter',
             url: 'https://polydraftpsg1.vercel.app/',
-            iconUrls: ['https://polydraftpsg1.vercel.app/icons/icon-192x192.png'],
+            iconUrls: ['https://polydraftpsg1.vercel.app/icon.png'],
           },
           theme: 'jupiter',
           lang: 'en',
