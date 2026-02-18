@@ -16,52 +16,41 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
     return 'https://api.mainnet-beta.solana.com';
   }, []);
 
-  // Fix MWA 404 on Android: Jupiter Mobile returns wallet_uri_base "https://jup.ag"
-  // after authorize(). MWA caches this and uses it for the next transact() call
-  // (e.g. signMessage), building https://jup.ag/v1/associate/local?... which 404s.
-  // We intercept localStorage.setItem to strip wallet_uri_base from ALL cache writes,
-  // forcing MWA to always use solana-wallet:// intent protocol.
+  // Fix MWA 404 on Android: After authorize(), Jupiter Mobile returns
+  // wallet_uri_base "https://jup.ag/solana-wallet-adapter" which is stored
+  // in-memory on the wallet object. When signMessage() triggers a new transact(),
+  // it reads wallet_uri_base from memory and calls:
+  //   window.location.assign("https://jup.ag/solana-wallet-adapter/v1/associate/local?...")
+  // This navigates to jup.ag which returns 404.
+  //
+  // Fix: Intercept Location.prototype.assign and rewrite any HTTPS MWA association
+  // URLs to use the solana-wallet:// intent protocol instead.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!/android/i.test(navigator.userAgent)) return;
 
-    const cacheKey = 'SolanaMobileWalletAdapterDefaultAuthorizationCache';
-
-    // Save original before patching
-    const originalSetItem = Storage.prototype.setItem;
-
-    // Clear any existing cached wallet_uri_base
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed?.wallet_uri_base) {
-          delete parsed.wallet_uri_base;
-          originalSetItem.call(localStorage, cacheKey, JSON.stringify(parsed));
-        }
-      } catch {
-        localStorage.removeItem(cacheKey);
-      }
-    }
-
-    // Intercept future writes to strip wallet_uri_base before it gets persisted
-    Storage.prototype.setItem = function (key: string, value: string) {
-      if (key === cacheKey) {
+    const originalAssign = Location.prototype.assign;
+    Location.prototype.assign = function (url: string | URL) {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      // Detect MWA association URLs that use HTTPS instead of solana-wallet://
+      if (urlStr.includes('/v1/associate/local')) {
         try {
-          const parsed = JSON.parse(value);
-          if (parsed?.wallet_uri_base) {
-            delete parsed.wallet_uri_base;
-            value = JSON.stringify(parsed);
+          const parsed = new URL(urlStr);
+          if (parsed.protocol === 'https:') {
+            // Rewrite to solana-wallet:// so Android fires the intent
+            const rewritten = new URL('solana-wallet:/v1/associate/local');
+            rewritten.search = parsed.search;
+            return originalAssign.call(this, rewritten.toString());
           }
         } catch {
-          // pass through
+          // fall through to original
         }
       }
-      originalSetItem.call(this, key, value);
+      return originalAssign.call(this, url);
     };
 
     return () => {
-      Storage.prototype.setItem = originalSetItem;
+      Location.prototype.assign = originalAssign;
     };
   }, []);
 
