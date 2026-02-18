@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import Link from 'next/link';
 import { isPSG1 } from '@/lib/platform';
 import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
@@ -87,7 +88,7 @@ export function ModeSelector({ className = '' }: ModeSelectorProps) {
             whileTap="tap"
             className="relative group cursor-pointer"
           >
-            <div className={`bg-card-bg border-balatro-thick border-purple-500/60 rounded-balatro-card p-6 h-full min-h-[200px] flex flex-col items-center justify-center gap-4 shadow-hard-lg overflow-hidden ${psg1 && focusedIndex === 0 ? 'psg1-focus' : ''}`}>
+            <div className={`bg-card-bg border-balatro-thick border-purple-500/60 rounded-balatro-card p-6 h-[220px] flex flex-col items-center justify-center gap-4 shadow-hard-lg overflow-hidden ${psg1 && focusedIndex === 0 ? 'psg1-focus' : ''}`}>
               {/* Glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-transparent to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -96,11 +97,17 @@ export function ModeSelector({ className = '' }: ModeSelectorProps) {
 
               {/* Icon */}
               <motion.div
-                className="text-6xl z-10"
+                className="z-10"
                 animate={{ y: [0, -4, 0] }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <span>🔭</span>
+                <Image
+                  src="/images/jupiter-logo.png"
+                  alt="Jupiter"
+                  width={56}
+                  height={56}
+                  className="w-14 h-14"
+                />
               </motion.div>
 
               {/* Title */}
@@ -132,7 +139,7 @@ export function ModeSelector({ className = '' }: ModeSelectorProps) {
             whileTap="tap"
             className="relative group cursor-pointer"
           >
-            <div className={`bg-card-bg border-balatro-thick border-game-gold/60 rounded-balatro-card p-6 h-full min-h-[200px] flex flex-col items-center justify-center gap-4 shadow-hard-lg overflow-hidden ${psg1 && focusedIndex === 1 ? 'psg1-focus' : ''}`}>
+            <div className={`bg-card-bg border-balatro-thick border-game-gold/60 rounded-balatro-card p-6 h-[220px] flex flex-col items-center justify-center gap-4 shadow-hard-lg overflow-hidden ${psg1 && focusedIndex === 1 ? 'psg1-focus' : ''}`}>
               {/* Glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
