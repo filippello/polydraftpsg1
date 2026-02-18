@@ -16,27 +16,53 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
     return 'https://api.mainnet-beta.solana.com';
   }, []);
 
-  // Fix MWA 404 on Android: Jupiter Mobile caches wallet_uri_base as "https://jup.ag"
-  // which causes subsequent connections to navigate to https://jup.ag/v1/associate/local?...
-  // instead of using the solana-wallet:// intent protocol. Stripping wallet_uri_base
-  // forces MWA to always use solana-wallet:// which properly launches the Android intent.
+  // Fix MWA 404 on Android: Jupiter Mobile returns wallet_uri_base "https://jup.ag"
+  // after authorize(). MWA caches this and uses it for the next transact() call
+  // (e.g. signMessage), building https://jup.ag/v1/associate/local?... which 404s.
+  // We intercept localStorage.setItem to strip wallet_uri_base from ALL cache writes,
+  // forcing MWA to always use solana-wallet:// intent protocol.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!/android/i.test(navigator.userAgent)) return;
 
     const cacheKey = 'SolanaMobileWalletAdapterDefaultAuthorizationCache';
-    const cached = localStorage.getItem(cacheKey);
-    if (!cached) return;
 
-    try {
-      const parsed = JSON.parse(cached);
-      if (parsed?.wallet_uri_base) {
-        delete parsed.wallet_uri_base;
-        localStorage.setItem(cacheKey, JSON.stringify(parsed));
+    // Save original before patching
+    const originalSetItem = Storage.prototype.setItem;
+
+    // Clear any existing cached wallet_uri_base
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed?.wallet_uri_base) {
+          delete parsed.wallet_uri_base;
+          originalSetItem.call(localStorage, cacheKey, JSON.stringify(parsed));
+        }
+      } catch {
+        localStorage.removeItem(cacheKey);
       }
-    } catch {
-      localStorage.removeItem(cacheKey);
     }
+
+    // Intercept future writes to strip wallet_uri_base before it gets persisted
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key === cacheKey) {
+        try {
+          const parsed = JSON.parse(value);
+          if (parsed?.wallet_uri_base) {
+            delete parsed.wallet_uri_base;
+            value = JSON.stringify(parsed);
+          }
+        } catch {
+          // pass through
+        }
+      }
+      originalSetItem.call(this, key, value);
+    };
+
+    return () => {
+      Storage.prototype.setItem = originalSetItem;
+    };
   }, []);
 
   return (
