@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Press_Start_2P, VT323 } from "next/font/google";
 import { Providers } from "@/components/Providers";
+import { PWARegister } from "@/components/PWARegister";
 import { getActiveVenue } from "@/lib/adapters/config";
 import { isPSG1, isTestDevice, TEST_DEVICE } from "@/lib/platform";
 import "./globals.css";
@@ -68,6 +69,7 @@ export default function RootLayout({
         className={`${jetbrainsMono.variable} ${pressStart2P.variable} ${vt323.variable} font-mono antialiased bg-game-bg text-foreground`}
         style={themeStyle}
       >
+        <PWARegister />
         <Providers>
           {/* Balatro post-processing effects wrapper */}
           <div className={`min-h-screen min-h-dvh flex flex-col balatro-noise balatro-vignette balatro-scanlines${isPSG1() && isTestDevice() ? ' items-center justify-center' : ''}`}>

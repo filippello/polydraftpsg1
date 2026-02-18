@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useCallback, type ReactNode } from 'react';
-import { Provider as JotaiProvider } from 'jotai';
 import { useSessionStore } from '@/stores/session';
 import { useWalletAuthStore } from '@/stores/walletAuth';
 import { SolanaWalletProvider } from '@/providers/WalletProvider';
@@ -103,12 +102,10 @@ function SessionInitializer({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <JotaiProvider>
-      <SolanaWalletProvider>
-        <WalletGate>
-          <SessionInitializer>{children}</SessionInitializer>
-        </WalletGate>
-      </SolanaWalletProvider>
-    </JotaiProvider>
+    <SolanaWalletProvider>
+      <WalletGate>
+        <SessionInitializer>{children}</SessionInitializer>
+      </WalletGate>
+    </SolanaWalletProvider>
   );
 }

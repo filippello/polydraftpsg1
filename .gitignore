@@ -26,6 +26,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
 .env*.local
 
 # vercel
@@ -37,9 +38,6 @@ next-env.d.ts
 
 # input files (uploaded to Supabase Storage)
 /input/
-
-# remotion output
-/out/
 
 # serwist service worker (generated)
 public/sw*
