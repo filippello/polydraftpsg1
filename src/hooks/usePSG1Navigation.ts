@@ -86,7 +86,7 @@ export function usePSG1Navigation({
           break;
         case 'Enter':
           e.preventDefault();
-          if (itemCount > 0) onSelect?.(focusedIndex);
+          if (itemCount > 0) { playSound('focus_pop'); onSelect?.(focusedIndex); }
           break;
         case 'Escape':
           e.preventDefault();
@@ -128,7 +128,7 @@ export function usePSG1Navigation({
       const aNow = isGamepadButtonPressed(GP.A);
       const dpad = getDpadDirection();
 
-      if (bNow && !prevB && itemCount > 0) onSelect?.(focusedIndexRef.current);
+      if (bNow && !prevB && itemCount > 0) { playSound('focus_pop'); onSelect?.(focusedIndexRef.current); }
       if (aNow && !prevA) onBack?.();
 
       // D-pad navigation (only when there are items to navigate)
