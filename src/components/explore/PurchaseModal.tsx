@@ -15,6 +15,7 @@ import { getSolscanUrl } from '@/lib/jupiter/transaction';
 import { ShareButton } from './ShareButton';
 import { isPSG1 } from '@/lib/platform';
 import { GP, isGamepadButtonPressed, getDpadDirection } from '@/lib/gamepad';
+import { playSound } from '@/lib/audio';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -128,6 +129,8 @@ export function PurchaseModal({
       return;
     }
 
+    playSound('purchase_confirm');
+
     // If not connected, open wallet modal
     if (!connected) {
       addLog('Not connected, opening wallet modal...');
@@ -188,6 +191,7 @@ export function PurchaseModal({
 
       // Optimistic: show success immediately after tx is sent
       // The transaction is already on the network, confirmation is just waiting for finality
+      playSound('purchase_success');
       setPurchaseState('success');
       setPurchaseResult({
         signature,
@@ -200,6 +204,7 @@ export function PurchaseModal({
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       addLog(`ERROR: ${errMsg}`);
+      playSound('error');
       setPurchaseState('error');
       setPurchaseResult({ error: errMsg });
     }
@@ -218,6 +223,7 @@ export function PurchaseModal({
   ]);
 
   const handleCancel = useCallback(() => {
+    playSound('modal_close');
     resetState();
     onCancel();
   }, [resetState, onCancel]);
@@ -232,6 +238,11 @@ export function PurchaseModal({
   // PSG1 keyboard navigation
   const psg1 = isPSG1();
   const [psg1FocusIndex, setPsg1FocusIndex] = useState(0);
+
+  // Play modal_open sound when modal opens
+  useEffect(() => {
+    if (isOpen) playSound('modal_open');
+  }, [isOpen]);
 
   // Reset focus when state changes
   useEffect(() => {
@@ -263,14 +274,17 @@ export function PurchaseModal({
         switch (e.key) {
           case 'ArrowLeft':
             e.preventDefault();
+            playSound('amount_tick');
             setPsg1FocusIndex((prev) => Math.max(0, prev - 1));
             break;
           case 'ArrowRight':
             e.preventDefault();
+            playSound('amount_tick');
             setPsg1FocusIndex((prev) => Math.min(totalItems - 1, prev + 1));
             break;
           case 'ArrowDown':
             e.preventDefault();
+            playSound('amount_tick');
             // From amounts row → jump to Cancel
             if (psg1FocusIndex < PRESET_AMOUNTS.length) {
               setPsg1FocusIndex(PRESET_AMOUNTS.length);
@@ -278,6 +292,7 @@ export function PurchaseModal({
             break;
           case 'ArrowUp':
             e.preventDefault();
+            playSound('amount_tick');
             // From actions row → jump back to amounts
             if (psg1FocusIndex >= PRESET_AMOUNTS.length) {
               setPsg1FocusIndex(0);
@@ -400,6 +415,7 @@ export function PurchaseModal({
 
       // A button (rising edge) → cancel
       if (aNow && !prevA) {
+        playSound('nav_back');
         handleCancelRef.current();
       }
 
@@ -407,26 +423,30 @@ export function PurchaseModal({
       if (state === 'select_amount' && hasMarket) {
         const totalItems = PRESET_AMOUNTS.length + 2;
         if (dpad.left && !prevLeft) {
+          playSound('nav_tick');
           setPsg1FocusIndex((prev) => Math.max(0, prev - 1));
         }
         if (dpad.right && !prevRight) {
+          playSound('nav_tick');
           setPsg1FocusIndex((prev) => Math.min(totalItems - 1, prev + 1));
         }
         if (dpad.down && !prevDown) {
+          playSound('nav_tick');
           // From amounts row → jump to Cancel
           if (focusIdx < PRESET_AMOUNTS.length) {
             setPsg1FocusIndex(PRESET_AMOUNTS.length);
           }
         }
         if (dpad.up && !prevUp) {
+          playSound('nav_tick');
           // From actions row → jump back to amounts
           if (focusIdx >= PRESET_AMOUNTS.length) {
             setPsg1FocusIndex(0);
           }
         }
       } else if (state === 'error') {
-        if (dpad.left && !prevLeft) setPsg1FocusIndex((prev) => (prev === 0 ? 1 : 0));
-        if (dpad.right && !prevRight) setPsg1FocusIndex((prev) => (prev === 0 ? 1 : 0));
+        if (dpad.left && !prevLeft) { playSound('nav_tick'); setPsg1FocusIndex((prev) => (prev === 0 ? 1 : 0)); }
+        if (dpad.right && !prevRight) { playSound('nav_tick'); setPsg1FocusIndex((prev) => (prev === 0 ? 1 : 0)); }
       }
 
       prevB = bNow;

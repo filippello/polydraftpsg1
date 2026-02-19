@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { type MotionValue, animate } from 'framer-motion';
 import { GP, isGamepadButtonPressed, getDpadDirection } from '@/lib/gamepad';
+import { playSound } from '@/lib/audio';
 
 interface UseHoldToConfirmOptions {
   enabled: boolean;
@@ -136,6 +137,7 @@ export function useHoldToConfirm({
           lastProgressUpdate = 0;
           setChargeDirection('right');
           setChargeProgress(0);
+          playSound('charge_loop');
         }
         if (leftGateOpen && yNow && !prevY) {
           motionXRef.current.stop();
@@ -145,6 +147,7 @@ export function useHoldToConfirm({
           lastProgressUpdate = 0;
           setChargeDirection('left');
           setChargeProgress(0);
+          playSound('charge_loop');
         }
       }
 
@@ -178,6 +181,7 @@ export function useHoldToConfirm({
 
           if (progress >= 1) {
             setChargeProgress(1);
+            playSound('charge_confirm');
             const dir = chargeDir;
             chargeDir = null;
             chargeStart = null;

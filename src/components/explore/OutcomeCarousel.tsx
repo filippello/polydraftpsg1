@@ -11,6 +11,7 @@ import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { PurchaseModal } from './PurchaseModal';
 import { ShareButton } from './ShareButton';
 import { PSG1BackButton } from '@/components/layout/PSG1BackButton';
+import { playSound } from '@/lib/audio';
 
 interface OutcomeCarouselProps {
   market: ExploreMarket;
@@ -94,6 +95,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
     } else {
       setExitDirection(null);
       nextOutcome();
+      playSound('carousel_slide');
     }
   }, [isLastOutcome, outcomes.length, onComplete, nextOutcome, setOutcomeIndex]);
 
@@ -113,17 +115,20 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
   }, [currentOutcome]);
 
   const handlePass = useCallback(() => {
+    playSound('card_pick');
     setExitDirection('down');
     setTimeout(() => handleNext(), 200);
   }, [handleNext]);
 
   // Hold callbacks with screen shake for PSG1
   const handleHoldYes = useCallback(() => {
+    playSound('card_pick');
     triggerScreenShake();
     handleYes();
   }, [triggerScreenShake, handleYes]);
 
   const handleHoldNo = useCallback(() => {
+    playSound('card_pick');
     triggerScreenShake();
     handleNo();
   }, [triggerScreenShake, handleNo]);
@@ -158,7 +163,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
     let prevA = false;
     const pollBack = () => {
       const aNow = isGamepadButtonPressed(GP.A);
-      if (aNow && !prevA) onBack?.();
+      if (aNow && !prevA) { playSound('nav_back'); onBack?.(); }
       prevA = aNow;
       rafId = requestAnimationFrame(pollBack);
     };
@@ -204,6 +209,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
   };
 
   const handlePurchaseCancel = () => {
+    playSound('nav_back');
     setShowPurchaseModal(false);
     setPendingSwipe(null);
     if (psg1) {

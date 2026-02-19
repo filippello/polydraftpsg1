@@ -19,6 +19,7 @@ import {
 } from '@/lib/rarity';
 import { isPSG1 } from '@/lib/platform';
 import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
+import { playSound } from '@/lib/audio';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { PixelDissolve } from '@/components/animations/PixelDissolve';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
@@ -130,6 +131,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   // Handle tap to open pack
   const handleOpenPack = () => {
     if (phase === 'opening') {
+      playSound('pack_open');
       setPhase('dissolving');
     }
   };
@@ -142,6 +144,16 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   useEffect(() => {
     if (phase === 'revealing' && revealedCards.length < events.length) {
       const timer = setTimeout(() => {
+        const nextIndex = revealedCards.length;
+        // Play rarity-based sound for each card reveal
+        if (nextIndex < events.length) {
+          const event = events[nextIndex];
+          const rarity = event.rarityInfo?.rarity ?? getEventRarity(event.outcome_a_probability, event.outcome_b_probability);
+          if (rarity === 'legendary') playSound('reveal_legendary');
+          else if (rarity === 'epic') playSound('reveal_epic');
+          else if (rarity === 'rare') playSound('reveal_rare');
+          else playSound('card_deal');
+        }
         setRevealedCards((prev) => [...prev, prev.length]);
       }, 200);
       return () => clearTimeout(timer);
@@ -149,10 +161,11 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       const timer = setTimeout(() => setPhase('swiping'), 600);
       return () => clearTimeout(timer);
     }
-  }, [phase, revealedCards]);
+  }, [phase, revealedCards, events]);
 
   const handleSwipe = useCallback((outcome: Outcome) => {
     const event = events[currentIndex];
+    playSound('card_pick');
 
     // Save pick
     setDraftPick(event.id, outcome);
@@ -163,6 +176,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       setCurrentIndex((prev) => prev + 1);
     } else {
       // All picked - go to confirming
+      playSound('charge_confirm');
       setTimeout(() => setPhase('confirming'), 300);
     }
   }, [currentIndex, events, setDraftPick]);
