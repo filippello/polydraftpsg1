@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, RefObject } from 'react';
 import { getDpadDirection } from '@/lib/gamepad';
+import { playSound } from '@/lib/audio';
 
 const SCROLL_STEP = 80; // pixels per D-pad press
 
@@ -53,9 +54,11 @@ export function usePSG1Scroll(
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        playSound('nav_tick');
         scrollTarget(SCROLL_STEP);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
+        playSound('nav_tick');
         scrollTarget(-SCROLL_STEP);
       }
     };
@@ -76,8 +79,8 @@ export function usePSG1Scroll(
 
     const poll = () => {
       const dpad = getDpadDirection();
-      if (dpad.down && !prevDown) scrollTarget(SCROLL_STEP);
-      if (dpad.up && !prevUp) scrollTarget(-SCROLL_STEP);
+      if (dpad.down && !prevDown) { playSound('nav_tick'); scrollTarget(SCROLL_STEP); }
+      if (dpad.up && !prevUp) { playSound('nav_tick'); scrollTarget(-SCROLL_STEP); }
       prevUp = dpad.up;
       prevDown = dpad.down;
       updateScrollInfo();

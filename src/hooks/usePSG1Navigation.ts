@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GP, isGamepadButtonPressed, getDpadDirection } from '@/lib/gamepad';
+import { playSound } from '@/lib/audio';
 
 interface UsePSG1NavigationOptions {
   enabled: boolean;
@@ -46,6 +47,7 @@ export function usePSG1Navigation({
       if (now - lastMoveTime.current < 60) return;
       lastMoveTime.current = now;
 
+      playSound('nav_tick');
       setFocusedIndex((prev) => {
         const next = prev + delta;
         if (next < 0) {
