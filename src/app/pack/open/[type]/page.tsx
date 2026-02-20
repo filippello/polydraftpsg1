@@ -25,6 +25,7 @@ import { isPSG1 } from '@/lib/platform';
 import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
 import { playSound } from '@/lib/audio';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
+import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
 import { PixelDissolve } from '@/components/animations/PixelDissolve';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
 
@@ -298,32 +299,22 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     }
   }, [publicKey, sendTransaction, connection, packId, setShowModal]);
 
-  // PSG1 gamepad/keyboard for payment phase (B → pay, A → back)
-  useEffect(() => {
-    if (!psg1 || phase !== 'payment') return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') { e.preventDefault(); handlePayment(); }
-      if (e.key === 'Escape') { e.preventDefault(); router.push('/game'); }
-    };
-    let rafId: number | null = null;
-    let prevB = false;
-    let prevA = false;
-    const poll = () => {
-      const bNow = isGamepadButtonPressed(GP.B);
-      const aNow = isGamepadButtonPressed(GP.A);
-      if (bNow && !prevB) handlePayment();
-      if (aNow && !prevA) router.push('/game');
-      prevB = bNow;
-      prevA = aNow;
-      rafId = requestAnimationFrame(poll);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    rafId = requestAnimationFrame(poll);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      if (rafId !== null) cancelAnimationFrame(rafId);
-    };
-  }, [psg1, phase, router, handlePayment]);
+  // PSG1 gamepad/keyboard navigation for payment phase
+  const handlePaymentSelect = useCallback((index: number) => {
+    if (index === 0) handlePayment();
+    if (index === 1) router.push('/game');
+  }, [handlePayment, router]);
+
+  const handlePaymentBack = useCallback(() => {
+    router.push('/game');
+  }, [router]);
+
+  const { focusedIndex: paymentFocused } = usePSG1Navigation({
+    enabled: psg1 && phase === 'payment',
+    itemCount: 2,
+    onSelect: handlePaymentSelect,
+    onBack: handlePaymentBack,
+  });
 
   // PSG1 gamepad/keyboard for revealing phase (B → skip to swiping)
   useEffect(() => {
@@ -707,7 +698,9 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
               {!connected ? (
                 <button
                   onClick={() => setShowModal(true)}
-                  className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-bold text-base rounded-xl shadow-hard-lg font-pixel-heading tracking-wider"
+                  className={`w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-bold text-base rounded-xl shadow-hard-lg font-pixel-heading tracking-wider transition-all ${
+                    psg1 && paymentFocused === 0 ? 'ring-2 ring-purple-400 shadow-[0_0_20px_rgba(147,51,234,0.5)] scale-105' : ''
+                  }`}
                 >
                   CONNECT WALLET
                 </button>
@@ -715,7 +708,9 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 <button
                   onClick={handlePayment}
                   disabled={paymentLoading}
-                  className="w-full py-4 bg-gradient-to-r from-game-gold to-amber-500 text-black font-bold text-base rounded-xl shadow-hard-lg font-pixel-heading tracking-wider disabled:opacity-50"
+                  className={`w-full py-4 bg-gradient-to-r from-game-gold to-amber-500 text-black font-bold text-base rounded-xl shadow-hard-lg font-pixel-heading tracking-wider disabled:opacity-50 transition-all ${
+                    psg1 && paymentFocused === 0 ? 'ring-2 ring-amber-300 shadow-[0_0_20px_rgba(234,179,8,0.5)] scale-105' : ''
+                  }`}
                 >
                   {paymentLoading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -730,7 +725,9 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
               <button
                 onClick={() => router.push('/game')}
-                className="w-full py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-colors"
+                className={`w-full py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-all ${
+                  psg1 && paymentFocused === 1 ? 'ring-2 ring-white/40 shadow-[0_0_16px_rgba(255,255,255,0.2)] scale-105' : ''
+                }`}
               >
                 Back
               </button>
@@ -745,7 +742,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             {psg1 && (
               <div className="mt-4 flex items-center justify-center gap-6">
                 <span className="text-xs text-gray-500">[A] Back</span>
-                <span className="text-xs text-emerald-400">[B] {connected ? 'Pay' : 'Connect'}</span>
+                <span className="text-xs text-emerald-400">[B] {paymentFocused === 0 ? (connected ? 'Pay' : 'Connect') : 'Back'}</span>
               </div>
             )}
           </motion.div>
