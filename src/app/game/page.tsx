@@ -270,7 +270,7 @@ export default function GameHomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="text-balatro-base font-pixel-body text-gray-400 mb-2 uppercase tracking-wider"
                     >
-                      Free
+                      Free Week
                     </motion.p>
                     {packsRemaining > 0 ? (
                       <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 backdrop-blur-sm">
@@ -324,6 +324,13 @@ export default function GameHomePage() {
 
                   {/* Premium pack (right) */}
                   <div className="flex flex-col items-center">
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-balatro-base font-pixel-body text-game-gold mb-2 uppercase tracking-wider font-bold"
+                    >
+                      $1 USDC
+                    </motion.p>
                     <div className="bg-white/[0.03] rounded-2xl border border-game-gold/30 p-4 backdrop-blur-sm">
                       <div className="flex items-end justify-center h-48 mb-2">
                         <motion.div
@@ -338,9 +345,6 @@ export default function GameHomePage() {
                           <PackSprite type="sports" size="lg" premium glowing={focusedIndex === psg1PackCount} />
                         </motion.div>
                       </div>
-                      <p className="text-balatro-base font-pixel-body text-game-gold text-center font-bold">
-                        $1 USDC
-                      </p>
                     </div>
                   </div>
                 </div>
