@@ -268,13 +268,13 @@ export default function GameHomePage() {
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-balatro-xs font-pixel-body text-gray-400 mb-2 uppercase tracking-wider"
+                      className="text-balatro-base font-pixel-body text-gray-400 mb-2 uppercase tracking-wider"
                     >
                       Free
                     </motion.p>
                     {packsRemaining > 0 ? (
                       <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 backdrop-blur-sm">
-                        <div className="relative flex justify-center items-end h-40 mb-2">
+                        <div className="relative flex justify-center items-end h-48 mb-2">
                           {/* First free pack */}
                           <motion.div
                             ref={focusedIndex === 0 ? focusedRef : undefined}
@@ -290,7 +290,7 @@ export default function GameHomePage() {
                             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                             onClick={handlePackSelect}
                           >
-                            <PackSprite type="sports" size="md" glowing={focusedIndex === 0} />
+                            <PackSprite type="sports" size="lg" glowing={focusedIndex === 0} />
                           </motion.div>
 
                           {packsRemaining >= 2 && (
@@ -308,37 +308,24 @@ export default function GameHomePage() {
                               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                               onClick={handlePackSelect}
                             >
-                              <PackSprite type="sports" size="md" glowing={focusedIndex === 1} />
+                              <PackSprite type="sports" size="lg" glowing={focusedIndex === 1} />
                             </motion.div>
                           )}
                         </div>
-                        <p className="text-balatro-xs font-pixel-body text-gray-500 text-center">
-                          {packsRemaining} left
-                        </p>
                       </div>
                     ) : (
                       <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 backdrop-blur-sm">
-                        <div className="flex items-end justify-center h-40 mb-2 opacity-40">
-                          <PackSprite type="sports" size="md" />
+                        <div className="flex items-end justify-center h-48 mb-2 opacity-40">
+                          <PackSprite type="sports" size="lg" />
                         </div>
-                        <p className="text-balatro-xs font-pixel-body text-gray-500 text-center">
-                          Monday!
-                        </p>
                       </div>
                     )}
                   </div>
 
                   {/* Premium pack (right) */}
                   <div className="flex flex-col items-center">
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-balatro-xs font-pixel-body text-game-gold mb-2 uppercase tracking-wider font-bold"
-                    >
-                      Premium
-                    </motion.p>
                     <div className="bg-white/[0.03] rounded-2xl border border-game-gold/30 p-4 backdrop-blur-sm">
-                      <div className="flex items-end justify-center h-40 mb-2">
+                      <div className="flex items-end justify-center h-48 mb-2">
                         <motion.div
                           ref={focusedIndex === psg1PackCount ? focusedRef : undefined}
                           className="cursor-pointer origin-bottom"
@@ -348,10 +335,10 @@ export default function GameHomePage() {
                           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                           onClick={handleBuyPack}
                         >
-                          <PackSprite type="sports" size="md" premium glowing={focusedIndex === psg1PackCount} />
+                          <PackSprite type="sports" size="lg" premium glowing={focusedIndex === psg1PackCount} />
                         </motion.div>
                       </div>
-                      <p className="text-balatro-xs font-pixel-body text-game-gold text-center font-bold">
+                      <p className="text-balatro-base font-pixel-body text-game-gold text-center font-bold">
                         $1 USDC
                       </p>
                     </div>
