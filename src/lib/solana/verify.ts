@@ -78,6 +78,11 @@ function deserializeReceipt(data: Buffer): PurchaseReceiptData | null {
 // PDA Derivation (server-side)
 // ============================================
 
+/** Strip hyphens from UUID to fit Solana's 32-byte seed limit */
+function sanitizeSeed(uuid: string): string {
+  return uuid.replace(/-/g, '');
+}
+
 function derivePurchaseReceiptPDA(
   buyer: PublicKey,
   clientSeed: string
@@ -86,7 +91,7 @@ function derivePurchaseReceiptPDA(
     [
       Buffer.from('purchase'),
       buyer.toBuffer(),
-      Buffer.from(clientSeed),
+      Buffer.from(sanitizeSeed(clientSeed)),
     ],
     getProgramId()
   );
@@ -146,8 +151,8 @@ export async function verifyPurchaseReceipt(
       return false;
     }
 
-    // Check client_seed matches pack ID
-    if (receipt.clientSeed !== packId) {
+    // Check client_seed matches pack ID (stored without hyphens)
+    if (receipt.clientSeed !== sanitizeSeed(packId)) {
       console.error('Receipt client_seed mismatch');
       return false;
     }

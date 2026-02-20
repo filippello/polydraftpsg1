@@ -54,6 +54,11 @@ const BUY_PACK_DISCRIMINATOR = Buffer.from([
 // PDA Derivation
 // ============================================
 
+/** Strip hyphens from UUID to fit Solana's 32-byte seed limit */
+function sanitizeSeed(uuid: string): string {
+  return uuid.replace(/-/g, '');
+}
+
 /**
  * Derive the PDA for a purchase receipt.
  * Seeds: ["purchase", buyer_pubkey, client_seed_bytes]
@@ -66,7 +71,7 @@ export function derivePurchaseReceiptPDA(
     [
       Buffer.from('purchase'),
       buyer.toBuffer(),
-      Buffer.from(clientSeed),
+      Buffer.from(sanitizeSeed(clientSeed)),
     ],
     getProgramId()
   );
@@ -150,7 +155,8 @@ export async function purchasePremiumPack(
 ): Promise<{ signature: string }> {
   const amount = BigInt(PREMIUM_PACK_PRICE);
 
-  const ix = await buildBuyPackInstruction(buyer, clientSeed, amount);
+  const sanitized = clientSeed.replace(/-/g, '');
+  const ix = await buildBuyPackInstruction(buyer, sanitized, amount);
 
   const { blockhash } = await connection.getLatestBlockhash();
   const message = new TransactionMessage({

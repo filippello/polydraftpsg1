@@ -14,7 +14,7 @@ pub mod polydraft_purchase {
     use super::*;
 
     pub fn buy_pack(ctx: Context<BuyPack>, client_seed: String, amount: u64) -> Result<()> {
-        require!(client_seed.len() <= 36, PurchaseError::SeedTooLong);
+        require!(client_seed.len() <= 32, PurchaseError::SeedTooLong);
         require!(amount > 0, PurchaseError::ZeroAmount);
 
         // CPI: transfer USDC from buyer ATA → treasury ATA
@@ -94,8 +94,8 @@ pub struct BuyPack<'info> {
 pub struct PurchaseReceipt {
     pub buyer: Pubkey,     // 32
     pub amount: u64,       // 8
-    #[max_len(36)]
-    pub client_seed: String, // 4 + 36
+    #[max_len(32)]
+    pub client_seed: String, // 4 + 32
     pub timestamp: i64,    // 8
     pub bump: u8,          // 1
 }
@@ -106,7 +106,7 @@ pub struct PurchaseReceipt {
 
 #[error_code]
 pub enum PurchaseError {
-    #[msg("client_seed must be <= 36 bytes")]
+    #[msg("client_seed must be <= 32 bytes")]
     SeedTooLong,
     #[msg("amount must be > 0")]
     ZeroAmount,
