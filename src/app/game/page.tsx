@@ -361,90 +361,100 @@ export default function GameHomePage() {
             {/* Pack Area */}
             <div className="flex-1 flex flex-col items-center justify-center">
               <div className="text-center w-full max-w-sm">
-                {/* Pack Display - Visual stack based on packs remaining */}
-                {packsRemaining > 0 ? (
-                  // Has packs to open - show as card hand
-                  <>
-                    <p className="text-sm text-gray-400 mb-6">Weekly Packs Available!</p>
+                {/* Pack Display - Free packs left, Premium pack right */}
+                <div className="flex items-end justify-center gap-10 mb-4">
+                  {/* Free packs group (left side) */}
+                  <div className="flex flex-col items-center">
+                    {packsRemaining > 0 ? (
+                      <>
+                        <p className="text-xs text-gray-400 mb-3 uppercase tracking-wider">Free Packs</p>
+                        <div className="relative flex justify-center items-end h-48">
+                          {/* First free pack */}
+                          <Link href="/pack/open/sports" className="absolute z-[2]">
+                            <motion.div
+                              className="cursor-pointer origin-bottom"
+                              style={{ rotate: packsRemaining >= 2 ? -8 : 0, x: packsRemaining >= 2 ? -30 : 0 }}
+                              whileHover={{ y: -20, rotate: packsRemaining >= 2 ? -5 : 0, scale: 1.05, zIndex: 10 }}
+                              whileTap={{ scale: 0.95 }}
+                              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                              onHoverStart={() => setHoveredPack('left')}
+                              onHoverEnd={() => setHoveredPack(null)}
+                            >
+                              <PackSprite type="sports" size="lg" glowing={hoveredPack === 'left' || hoveredPack === null} />
+                            </motion.div>
+                          </Link>
 
-                    {/* Card hand layout */}
-                    <div className="relative flex justify-center items-end h-48 mb-4">
-                      {/* Left card (main/front card) */}
-                      <Link href="/pack/open/sports" className="absolute z-[2]">
-                        <motion.div
-                          className="cursor-pointer origin-bottom"
-                          style={{ rotate: packsRemaining >= 2 ? -8 : 0, x: packsRemaining >= 2 ? -50 : 0 }}
-                          whileHover={{ y: -20, rotate: packsRemaining >= 2 ? -5 : 0, scale: 1.05, zIndex: 10 }}
-                          whileTap={{ scale: 0.95 }}
-                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                          onHoverStart={() => setHoveredPack('left')}
-                          onHoverEnd={() => setHoveredPack(null)}
+                          {packsRemaining >= 2 && (
+                            <Link href="/pack/open/sports" className="absolute z-[1]">
+                              <motion.div
+                                className="cursor-pointer origin-bottom"
+                                style={{ rotate: 8, x: 30 }}
+                                whileHover={{ y: -20, rotate: 5, scale: 1.05, zIndex: 10 }}
+                                whileTap={{ scale: 0.95 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                onHoverStart={() => setHoveredPack('right')}
+                                onHoverEnd={() => setHoveredPack(null)}
+                              >
+                                <PackSprite type="sports" size="lg" glowing={hoveredPack === 'right'} />
+                              </motion.div>
+                            </Link>
+                          )}
+                        </div>
+                        <motion.p
+                          className="text-sm font-bold mt-2"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity }}
                         >
-                          <PackSprite type="sports" size="lg" glowing={hoveredPack === 'left' || hoveredPack === null} />
-                        </motion.div>
-                      </Link>
+                          Tap to Open
+                        </motion.p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-400 mb-3 uppercase tracking-wider">Free Packs</p>
+                        <div className="flex items-end justify-center h-48">
+                          <div className="opacity-40">
+                            <PackSprite type="sports" size="lg" />
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Next Monday!
+                        </p>
+                      </>
+                    )}
+                  </div>
 
-                      {packsRemaining >= 2 && (
-                        // Right card (back card)
-                        <Link href="/pack/open/sports" className="absolute z-[1]">
-                          <motion.div
-                            className="cursor-pointer origin-bottom"
-                            style={{ rotate: 8, x: 50 }}
-                            whileHover={{ y: -20, rotate: 5, scale: 1.05, zIndex: 10 }}
-                            whileTap={{ scale: 0.95 }}
-                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                            onHoverStart={() => setHoveredPack('right')}
-                            onHoverEnd={() => setHoveredPack(null)}
-                          >
-                            <PackSprite type="sports" size="lg" glowing={hoveredPack === 'right'} />
-                          </motion.div>
-                        </Link>
-                      )}
+                  {/* Divider */}
+                  <div className="h-48 w-px bg-white/10 self-center" />
+
+                  {/* Premium pack (right side) */}
+                  <div className="flex flex-col items-center">
+                    <p className="text-xs text-game-gold mb-3 uppercase tracking-wider font-bold">Premium</p>
+                    <div className="flex items-end justify-center h-48">
+                      <motion.div
+                        className="cursor-pointer relative"
+                        onHoverStart={() => setIsHovering(true)}
+                        onHoverEnd={() => setIsHovering(false)}
+                        whileHover={{ y: -10, scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleBuyPack}
+                      >
+                        <PackSprite type="sports" size="lg" premium glowing={isHovering} />
+                      </motion.div>
                     </div>
-
-                    <motion.p
-                      className="text-lg font-bold"
-                      animate={{ opacity: [0.5, 1, 0.5] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      Tap to Open
-                    </motion.p>
-
-                    <p className="mt-2 text-xs text-gray-500">
-                      5 events • Make your picks • Win USD
-                    </p>
-                  </>
-                ) : (
-                  // No packs remaining - show Buy New Pack
-                  <>
                     <motion.div
-                      className="cursor-pointer relative inline-block mb-4"
-                      onHoverStart={() => setIsHovering(true)}
-                      onHoverEnd={() => setIsHovering(false)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      className="mt-2 bg-game-gold text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg whitespace-nowrap cursor-pointer"
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
                       onClick={handleBuyPack}
                     >
-                      <PackSprite
-                        type="sports"
-                        size="lg"
-                        glowing={isHovering}
-                      />
-                      {/* Buy Premium Pack tag */}
-                      <motion.div
-                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-game-gold text-black px-3 py-1 rounded-full text-sm font-bold shadow-lg whitespace-nowrap"
-                        animate={{ scale: [1, 1.05, 1] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
-                        Buy Pack — $1 USDC
-                      </motion.div>
+                      $1 USDC
                     </motion.div>
+                  </div>
+                </div>
 
-                    <p className="text-sm text-gray-400 mt-4">
-                      Come back next Monday for free packs!
-                    </p>
-                  </>
-                )}
+                <p className="text-xs text-gray-500">
+                  5 events • Make your picks • Win USD
+                </p>
 
                 {/* Active Packs Preview */}
                 {hasActivePacks && (

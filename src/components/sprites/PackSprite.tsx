@@ -6,6 +6,7 @@ interface PackSpriteProps {
   type: 'sports' | 'economy' | 'politics' | 'crypto' | 'default';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   glowing?: boolean;
+  premium?: boolean;
   className?: string;
 }
 
@@ -16,8 +17,9 @@ const sizeDimensions = {
   xl: { w: 256, h: 320, classes: 'w-64 h-[320px]' },
 };
 
-export function PackSprite({ size = 'md', glowing = false, className = '' }: PackSpriteProps) {
+export function PackSprite({ size = 'md', glowing = false, premium = false, className = '' }: PackSpriteProps) {
   const dim = sizeDimensions[size];
+  const src = premium ? '/images/packs/sportpackp.png' : '/images/packs/sportpack_1.png';
 
   return (
     <div
@@ -27,8 +29,8 @@ export function PackSprite({ size = 'md', glowing = false, className = '' }: Pac
       `}
     >
       <Image
-        src="/images/packs/sportpack_1.png"
-        alt="Booster Pack"
+        src={src}
+        alt={premium ? 'Premium Pack' : 'Booster Pack'}
         width={dim.w}
         height={dim.h}
         className="w-full h-full object-contain drop-shadow-[0_4px_0_rgba(0,0,0,0.3)]"

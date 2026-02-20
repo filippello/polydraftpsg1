@@ -685,7 +685,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
               transition={{ duration: 0.3, repeat: Infinity }}
               className="mb-6"
             >
-              <PackSprite type={type as 'sports'} size="lg" glowing />
+              <PackSprite type={type as 'sports'} size="lg" premium glowing />
             </motion.div>
 
             <h2 className="text-xl font-bold font-pixel-heading text-shadow-balatro tracking-wider mb-2">
