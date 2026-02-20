@@ -14,12 +14,12 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
   const endpoint = useMemo(() => {
     // Transfer mode always uses mainnet
     if (paymentMethod === 'transfer') {
-      return 'https://api.mainnet-beta.solana.com';
+      return process.env.NEXT_PUBLIC_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com';
     }
     if (process.env.NEXT_PUBLIC_SOLANA_RPC_URL) {
       return process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
     }
-    return 'https://api.mainnet-beta.solana.com';
+    return process.env.NEXT_PUBLIC_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com';
   }, [paymentMethod]);
 
   // Fix MWA 404 on Android: After authorize(), Jupiter Mobile returns

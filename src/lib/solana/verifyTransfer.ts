@@ -13,7 +13,8 @@ import { getAssociatedTokenAddress } from '@solana/spl-token';
 const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 
 /** Mainnet RPC — transfer mode always uses mainnet */
-const MAINNET_RPC = 'https://api.mainnet-beta.solana.com';
+const MAINNET_RPC =
+  process.env.NEXT_PUBLIC_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
 let _treasury: PublicKey | null = null;
 function getTreasury(): PublicKey {
