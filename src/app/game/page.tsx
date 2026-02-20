@@ -107,10 +107,11 @@ export default function GameHomePage() {
   const packSpriteCount = packsRemaining > 0 ? Math.min(packsRemaining, 2) : 1; // 1 for buy button
 
   // PSG1: item count depends on current view
+  // In packs view: free packs (0-2) + 1 premium pack always
   const psg1PackCount = Math.max(packsRemaining, 0);
   const psg1NavItemCount = menuView === 'main'
     ? psg1MenuItems.length
-    : Math.max(psg1PackCount, 1); // at least 1 for "no packs" state
+    : psg1PackCount + 1; // free packs + premium pack
   const navItemCount = psg1
     ? psg1NavItemCount
     : packSpriteCount + previewPacks.length + (remainingActivePacks > 0 ? 1 : 0);
@@ -149,7 +150,12 @@ export default function GameHomePage() {
     if (menuView === 'main') {
       handleMenuSelect(index);
     } else {
-      handlePackSelect();
+      // In packs view: indices 0..psg1PackCount-1 are free packs, last is premium
+      if (index < psg1PackCount) {
+        handlePackSelect();
+      } else {
+        handleBuyPack();
+      }
     }
   }, [psg1, menuView, packsRemaining, packSpriteCount, previewPacks, router, handleMenuSelect, handlePackSelect]);
 
@@ -164,7 +170,7 @@ export default function GameHomePage() {
   const { focusedIndex } = usePSG1Navigation({
     enabled: psg1,
     itemCount: navItemCount,
-    columns: menuView === 'packs' && packsRemaining >= 2 ? 2 : 1,
+    columns: menuView === 'packs' ? psg1PackCount + 1 : 1,
     onSelect: handleNavSelect,
     onBack: handleNavBack,
   });
@@ -254,75 +260,111 @@ export default function GameHomePage() {
                 })}
               </div>
             ) : (
-              /* Pack sprites view */
+              /* Pack sprites view — free packs + premium */
               <div className="flex-1 flex flex-col items-center justify-center">
-                <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-balatro-base font-pixel-heading text-gray-300 mb-6"
-                >
-                  {packsRemaining > 0
-                    ? `${packsRemaining} pack${packsRemaining > 1 ? 's' : ''} remaining`
-                    : 'No packs available'}
-                </motion.p>
+                <div className="flex items-end justify-center gap-6">
+                  {/* Free packs (left) */}
+                  <div className="flex flex-col items-center">
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-balatro-xs font-pixel-body text-gray-400 mb-2 uppercase tracking-wider"
+                    >
+                      Free
+                    </motion.p>
+                    {packsRemaining > 0 ? (
+                      <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 backdrop-blur-sm">
+                        <div className="relative flex justify-center items-end h-40 mb-2">
+                          {/* First free pack */}
+                          <motion.div
+                            ref={focusedIndex === 0 ? focusedRef : undefined}
+                            className="cursor-pointer origin-bottom"
+                            style={{
+                              rotate: packsRemaining >= 2 ? -8 : 0,
+                              x: packsRemaining >= 2 ? -30 : 0,
+                              zIndex: focusedIndex === 0 ? 10 : 2,
+                            }}
+                            animate={focusedIndex === 0
+                              ? { y: -10, scale: 1.08, filter: 'drop-shadow(0 0 16px rgba(16,185,129,0.5))' }
+                              : { y: 0, scale: 1, filter: 'drop-shadow(0 0 0 transparent)' }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                            onClick={handlePackSelect}
+                          >
+                            <PackSprite type="sports" size="md" glowing={focusedIndex === 0} />
+                          </motion.div>
 
-                {packsRemaining > 0 ? (
-                  <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-6 backdrop-blur-sm">
-                    <div className="relative flex justify-center items-end h-48 mb-4">
-                      {/* First pack */}
-                      <motion.div
-                        ref={focusedIndex === 0 ? focusedRef : undefined}
-                        className="cursor-pointer origin-bottom"
-                        style={{
-                          rotate: packsRemaining >= 2 ? -8 : 0,
-                          x: packsRemaining >= 2 ? -50 : 0,
-                          zIndex: focusedIndex === 0 ? 10 : 2,
-                        }}
-                        animate={focusedIndex === 0
-                          ? { y: -15, scale: 1.08, filter: 'drop-shadow(0 0 16px rgba(16,185,129,0.5))' }
-                          : { y: 0, scale: 1, filter: 'drop-shadow(0 0 0 transparent)' }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                        onClick={handlePackSelect}
-                      >
-                        <PackSprite type="sports" size="lg" glowing={focusedIndex === 0} />
-                      </motion.div>
+                          {packsRemaining >= 2 && (
+                            <motion.div
+                              ref={focusedIndex === 1 ? focusedRef : undefined}
+                              className="absolute cursor-pointer origin-bottom"
+                              style={{
+                                rotate: 8,
+                                x: 30,
+                                zIndex: focusedIndex === 1 ? 10 : 1,
+                              }}
+                              animate={focusedIndex === 1
+                                ? { y: -10, scale: 1.08, filter: 'drop-shadow(0 0 16px rgba(16,185,129,0.5))' }
+                                : { y: 0, scale: 1, filter: 'drop-shadow(0 0 0 transparent)' }}
+                              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                              onClick={handlePackSelect}
+                            >
+                              <PackSprite type="sports" size="md" glowing={focusedIndex === 1} />
+                            </motion.div>
+                          )}
+                        </div>
+                        <p className="text-balatro-xs font-pixel-body text-gray-500 text-center">
+                          {packsRemaining} left
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 backdrop-blur-sm">
+                        <div className="flex items-end justify-center h-40 mb-2 opacity-40">
+                          <PackSprite type="sports" size="md" />
+                        </div>
+                        <p className="text-balatro-xs font-pixel-body text-gray-500 text-center">
+                          Monday!
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
-                      {packsRemaining >= 2 && (
+                  {/* Premium pack (right) */}
+                  <div className="flex flex-col items-center">
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-balatro-xs font-pixel-body text-game-gold mb-2 uppercase tracking-wider font-bold"
+                    >
+                      Premium
+                    </motion.p>
+                    <div className="bg-white/[0.03] rounded-2xl border border-game-gold/30 p-4 backdrop-blur-sm">
+                      <div className="flex items-end justify-center h-40 mb-2">
                         <motion.div
-                          ref={focusedIndex === 1 ? focusedRef : undefined}
-                          className="absolute cursor-pointer origin-bottom"
-                          style={{
-                            rotate: 8,
-                            x: 50,
-                            zIndex: focusedIndex === 1 ? 10 : 1,
-                          }}
-                          animate={focusedIndex === 1
-                            ? { y: -15, scale: 1.08, filter: 'drop-shadow(0 0 16px rgba(16,185,129,0.5))' }
+                          ref={focusedIndex === psg1PackCount ? focusedRef : undefined}
+                          className="cursor-pointer origin-bottom"
+                          animate={focusedIndex === psg1PackCount
+                            ? { y: -10, scale: 1.08, filter: 'drop-shadow(0 0 16px rgba(234,179,8,0.5))' }
                             : { y: 0, scale: 1, filter: 'drop-shadow(0 0 0 transparent)' }}
                           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                          onClick={handlePackSelect}
+                          onClick={handleBuyPack}
                         >
-                          <PackSprite type="sports" size="lg" glowing={focusedIndex === 1} />
+                          <PackSprite type="sports" size="md" premium glowing={focusedIndex === psg1PackCount} />
                         </motion.div>
-                      )}
+                      </div>
+                      <p className="text-balatro-xs font-pixel-body text-game-gold text-center font-bold">
+                        $1 USDC
+                      </p>
                     </div>
+                  </div>
+                </div>
 
-                    <motion.p
-                      className="text-balatro-sm font-pixel-body text-emerald-400 text-center"
-                      animate={{ opacity: [0.4, 1, 0.4] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      Press B to Open
-                    </motion.p>
-                  </div>
-                ) : (
-                  <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-8 backdrop-blur-sm text-center">
-                    <p className="text-4xl mb-4">📭</p>
-                    <p className="text-balatro-sm font-pixel-body text-gray-500">
-                      Come back next Monday!
-                    </p>
-                  </div>
-                )}
+                <motion.p
+                  className="text-balatro-sm font-pixel-body text-emerald-400 text-center mt-4"
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  Press B to {focusedIndex === psg1PackCount ? 'Buy' : 'Open'}
+                </motion.p>
               </div>
             )}
           </div>
