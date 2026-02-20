@@ -87,7 +87,7 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
         wallets={[]}
         config={{
           autoConnect: true,
-          env: 'mainnet-beta',
+          env: (process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.includes('devnet') ? 'devnet' : 'mainnet-beta') as 'mainnet-beta' | 'devnet',
           metadata: {
             name: 'Polydraft',
             description: 'Prediction Markets on Jupiter',
