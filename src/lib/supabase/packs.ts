@@ -51,6 +51,10 @@ export interface CreatePackInput {
   anonymousId: string;
   packTypeSlug: string;
   openedAt: string;
+  isPremium?: boolean;
+  paymentSignature?: string;
+  paymentAmount?: number;
+  buyerWallet?: string;
 }
 
 export interface CreatePickInput {
@@ -102,21 +106,30 @@ export async function createPack(input: CreatePackInput): Promise<string | null>
     return null;
   }
 
+  const insertData: Record<string, unknown> = {
+    id: input.id,
+    profile_id: input.profileId,
+    anonymous_id: input.anonymousId,
+    pack_type_id: packType.id,
+    opened_at: input.openedAt,
+    resolution_status: 'pending',
+    current_reveal_index: 0,
+    total_points: 0,
+    correct_picks: 0,
+    created_at: input.openedAt,
+    updated_at: input.openedAt,
+  };
+
+  if (input.isPremium) {
+    insertData.is_premium = true;
+    insertData.payment_signature = input.paymentSignature;
+    insertData.payment_amount = input.paymentAmount;
+    insertData.buyer_wallet = input.buyerWallet;
+  }
+
   const { data, error } = await supabase
     .from('user_packs')
-    .insert({
-      id: input.id,
-      profile_id: input.profileId,
-      anonymous_id: input.anonymousId,
-      pack_type_id: packType.id,
-      opened_at: input.openedAt,
-      resolution_status: 'pending',
-      current_reveal_index: 0,
-      total_points: 0,
-      correct_picks: 0,
-      created_at: input.openedAt,
-      updated_at: input.openedAt,
-    })
+    .insert(insertData)
     .select('id')
     .single();
 
@@ -451,6 +464,7 @@ export async function countWeeklyPacks(profileId: string): Promise<number> {
     .from('user_packs')
     .select('*', { count: 'exact', head: true })
     .eq('profile_id', profileId)
+    .eq('is_premium', false)
     .gte('opened_at', weekStart.toISOString())
     .lte('opened_at', weekEnd.toISOString());
 

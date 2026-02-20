@@ -39,6 +39,10 @@ next-env.d.ts
 # input files (uploaded to Supabase Storage)
 /input/
 
+# Solana / Anchor build artifacts
+target/
+programs/**/target/
+
 # serwist service worker (generated)
 public/sw*
 public/swe-worker*

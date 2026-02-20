@@ -130,6 +130,12 @@ export interface UserPack {
   created_at: string;
   updated_at: string;
 
+  // Premium pack fields
+  is_premium?: boolean;
+  payment_signature?: string;
+  payment_amount?: number;
+  buyer_wallet?: string;
+
   // Populated
   picks?: UserPick[];
 }

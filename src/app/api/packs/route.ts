@@ -7,6 +7,8 @@ import {
   WEEKLY_PACK_LIMIT,
 } from '@/lib/supabase/packs';
 import { fetchProfileByAnonymousId } from '@/lib/supabase/profile';
+import { verifyPurchaseReceipt } from '@/lib/solana/verify';
+import { PREMIUM_PACK_PRICE } from '@/lib/solana/purchase';
 import type { Outcome } from '@/types';
 
 // POST /api/packs
@@ -15,7 +17,7 @@ import type { Outcome } from '@/types';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { anonymousId, pack, picks } = body as {
+    const { anonymousId, pack, picks, premium } = body as {
       anonymousId: string;
       pack: {
         id: string;
@@ -33,6 +35,11 @@ export async function POST(request: Request) {
         oppositeProbabilitySnapshot: number;
         drawProbabilitySnapshot?: number;
       }>;
+      premium?: {
+        paymentSignature: string;
+        buyerWallet: string;
+        amount: number;
+      };
     };
 
     if (!anonymousId) {
@@ -68,17 +75,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check weekly pack limit
-    const weeklyStatus = await getWeeklyPackStatus(profile.id);
-    if (!weeklyStatus.canOpenPack) {
-      return NextResponse.json(
-        {
-          error: 'Weekly pack limit reached',
-          code: 'WEEKLY_LIMIT_REACHED',
-          weeklyStatus,
-        },
-        { status: 429 }
+    const isPremium = !!premium;
+
+    if (isPremium) {
+      // Verify on-chain purchase receipt
+      const receiptValid = await verifyPurchaseReceipt(
+        premium.buyerWallet,
+        pack.id,
+        PREMIUM_PACK_PRICE
       );
+      if (!receiptValid) {
+        return NextResponse.json(
+          { error: 'Payment verification failed. Receipt not found on-chain.' },
+          { status: 402 }
+        );
+      }
+    } else {
+      // Check weekly pack limit (free packs only)
+      const weeklyStatus = await getWeeklyPackStatus(profile.id);
+      if (!weeklyStatus.canOpenPack) {
+        return NextResponse.json(
+          {
+            error: 'Weekly pack limit reached',
+            code: 'WEEKLY_LIMIT_REACHED',
+            weeklyStatus,
+          },
+          { status: 429 }
+        );
+      }
     }
 
     // Create the pack with picks
@@ -89,6 +113,12 @@ export async function POST(request: Request) {
         anonymousId: anonymousId,
         packTypeSlug: pack.packTypeSlug,
         openedAt: pack.openedAt,
+        ...(isPremium && {
+          isPremium: true,
+          paymentSignature: premium.paymentSignature,
+          paymentAmount: premium.amount,
+          buyerWallet: premium.buyerWallet,
+        }),
       },
       picks.map((pick) => ({
         id: pick.id,

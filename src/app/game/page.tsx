@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PackSprite } from '@/components/sprites/PackSprite';
@@ -28,7 +28,6 @@ export default function GameHomePage() {
   const isProfileSynced = useSessionStore((state) => state.isProfileSynced);
   const [isHovering, setIsHovering] = useState(false);
   const [hoveredPack, setHoveredPack] = useState<'left' | 'right' | null>(null);
-  const [showBuyToast, setShowBuyToast] = useState(false);
   const [weeklyStatus, setWeeklyStatus] = useState<WeeklyPackStatus | null>(null);
 
   // Get active packs from myPacks store
@@ -87,11 +86,9 @@ export default function GameHomePage() {
   const packsOpenedThisWeek = Math.max(localPacksThisWeek, apiPacksOpened);
   const packsRemaining = Math.max(0, weeklyLimit - packsOpenedThisWeek);
 
-  // Handle buy pack click
+  // Handle buy pack click — navigate to premium pack purchase
   const handleBuyPack = () => {
-    setShowBuyToast(true);
-    setTimeout(() => setShowBuyToast(false), 3000);
-    console.log('[Analytics] User clicked "Buy Pack" on Home');
+    router.push('/pack/open/sports?premium=true');
   };
 
   // PSG1 navigation
@@ -433,13 +430,13 @@ export default function GameHomePage() {
                         size="lg"
                         glowing={isHovering}
                       />
-                      {/* Buy New Pack tag */}
+                      {/* Buy Premium Pack tag */}
                       <motion.div
                         className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-game-gold text-black px-3 py-1 rounded-full text-sm font-bold shadow-lg whitespace-nowrap"
                         animate={{ scale: [1, 1.05, 1] }}
                         transition={{ duration: 1.5, repeat: Infinity }}
                       >
-                        Buy New Pack
+                        Buy Pack — $1 USDC
                       </motion.div>
                     </motion.div>
 
@@ -515,33 +512,6 @@ export default function GameHomePage() {
         </>
       )}
 
-      {/* Buy Pack Toast Notification */}
-      <AnimatePresence>
-        {showBuyToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-24 left-4 right-4 z-50 md:left-1/2 md:-translate-x-1/2 md:max-w-[398px]"
-          >
-            <div className="bg-game-primary border-2 border-game-gold rounded-xl p-4 shadow-lg max-w-sm mx-auto">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">🛒</span>
-                <div className="flex-1">
-                  <p className="font-bold text-game-gold">Coming Soon!</p>
-                  <p className="text-sm text-gray-300">Pack purchases will be available soon.</p>
-                </div>
-                <button
-                  onClick={() => setShowBuyToast(false)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </main>
   );
 }

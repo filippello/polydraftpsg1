@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { useUnifiedWalletContext } from '@jup-ag/wallet-adapter';
+import { purchasePremiumPack, PREMIUM_PACK_PRICE } from '@/lib/solana/purchase';
 import { v4 as uuidv4 } from 'uuid';
 import { PackSprite } from '@/components/sprites/PackSprite';
 import { SwipeCard } from '@/components/game/SwipeCard';
@@ -24,7 +27,7 @@ import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { PixelDissolve } from '@/components/animations/PixelDissolve';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
 
-type Phase = 'checking' | 'loading' | 'opening' | 'dissolving' | 'revealing' | 'swiping' | 'confirming' | 'blocked' | 'error';
+type Phase = 'checking' | 'loading' | 'payment' | 'opening' | 'dissolving' | 'revealing' | 'swiping' | 'confirming' | 'blocked' | 'error';
 
 interface PickedEvent {
   event: Event;
@@ -34,12 +37,26 @@ interface PickedEvent {
 export default function PackOpeningPage({ params }: { params: { type: string } }) {
   const { type } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isPremium = searchParams.get('premium') === 'true';
+
   const [phase, setPhase] = useState<Phase>('loading');
   const [revealedCards, setRevealedCards] = useState<number[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pickedEvents, setPickedEvents] = useState<PickedEvent[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  // Premium pack state
+  const [paymentSignature, setPaymentSignature] = useState<string | null>(null);
+  const [buyerWallet, setBuyerWallet] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Wallet hooks
+  const { publicKey, sendTransaction, connected } = useWallet();
+  const { connection } = useConnection();
+  const { setShowModal } = useUnifiedWalletContext();
 
   // Generate stable pack ID
   const packIdRef = useRef<string>(uuidv4());
@@ -82,6 +99,12 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     async function checkAvailability() {
       if (!anonymousId || !isProfileSynced) return;
 
+      // Premium packs skip weekly limit — go straight to payment
+      if (isPremium) {
+        setPhase('payment');
+        return;
+      }
+
       try {
         const response = await fetch(
           `/api/packs/availability?anonymousId=${encodeURIComponent(anonymousId)}`
@@ -107,7 +130,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     if (phase === 'checking') {
       checkAvailability();
     }
-  }, [anonymousId, isProfileSynced, phase]);
+  }, [anonymousId, isProfileSynced, phase, isPremium]);
 
   // Initialize pack with mock events
   useEffect(() => {
@@ -249,6 +272,60 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     };
   }, [psg1, phase, router]);
 
+  // Handle premium pack payment
+  const handlePayment = useCallback(async () => {
+    if (!publicKey || !sendTransaction) {
+      setShowModal(true);
+      return;
+    }
+    setPaymentLoading(true);
+    setPaymentError(null);
+    try {
+      const result = await purchasePremiumPack(
+        connection,
+        publicKey,
+        packId,
+        sendTransaction
+      );
+      setPaymentSignature(result.signature);
+      setBuyerWallet(publicKey.toBase58());
+      playSound('pack_open');
+      setPhase('opening');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Payment failed';
+      setPaymentError(msg);
+    } finally {
+      setPaymentLoading(false);
+    }
+  }, [publicKey, sendTransaction, connection, packId, setShowModal]);
+
+  // PSG1 gamepad/keyboard for payment phase (B → pay, A → back)
+  useEffect(() => {
+    if (!psg1 || phase !== 'payment') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') { e.preventDefault(); handlePayment(); }
+      if (e.key === 'Escape') { e.preventDefault(); router.push('/game'); }
+    };
+    let rafId: number | null = null;
+    let prevB = false;
+    let prevA = false;
+    const poll = () => {
+      const bNow = isGamepadButtonPressed(GP.B);
+      const aNow = isGamepadButtonPressed(GP.A);
+      if (bNow && !prevB) handlePayment();
+      if (aNow && !prevA) router.push('/game');
+      prevB = bNow;
+      prevA = aNow;
+      rafId = requestAnimationFrame(poll);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1, phase, router, handlePayment]);
+
   // PSG1 gamepad/keyboard for revealing phase (B → skip to swiping)
   useEffect(() => {
     if (!psg1 || phase !== 'revealing') return;
@@ -358,6 +435,13 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
           anonymousId,
           pack: packData,
           picks: picksData,
+          ...(isPremium && paymentSignature && buyerWallet && {
+            premium: {
+              paymentSignature,
+              buyerWallet,
+              amount: PREMIUM_PACK_PRICE,
+            },
+          }),
         }),
       });
 
@@ -373,7 +457,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       console.error('Error syncing pack to database:', error);
       // Pack is still saved locally, will work in local-first mode
     }
-  }, [anonymousId, markPackSynced]);
+  }, [anonymousId, markPackSynced, isPremium, paymentSignature, buyerWallet]);
 
   // Save to myPacks when confirming starts
   useEffect(() => {
@@ -402,6 +486,12 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
         correct_picks: 0,
         created_at: now,
         updated_at: now,
+        ...(isPremium && {
+          is_premium: true,
+          payment_signature: paymentSignature ?? undefined,
+          payment_amount: PREMIUM_PACK_PRICE / 1_000_000,
+          buyer_wallet: buyerWallet ?? undefined,
+        }),
       };
 
       // Create UserPick objects with events
@@ -469,7 +559,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
         }))
       );
     }
-  }, [phase, packId, pickedEvents, type, addPack, events, syncPackToDb]);
+  }, [phase, packId, pickedEvents, type, addPack, events, syncPackToDb, isPremium, paymentSignature, buyerWallet]);
 
   // Calculate jackpot potential
   const jackpotData = pickedEvents.length === events.length
@@ -579,6 +669,86 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 </button>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {/* Payment Phase — Premium Packs */}
+        {phase === 'payment' && (
+          <motion.div
+            key="payment"
+            className="flex-1 flex flex-col items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              animate={{ rotate: [-2, 2, -2, 2, 0], scale: [1, 1.02, 1, 1.02, 1] }}
+              transition={{ duration: 0.3, repeat: Infinity }}
+              className="mb-6"
+            >
+              <PackSprite type={type as 'sports'} size="lg" glowing />
+            </motion.div>
+
+            <h2 className="text-xl font-bold font-pixel-heading text-shadow-balatro tracking-wider mb-2">
+              PREMIUM PACK
+            </h2>
+            <p className="text-lg text-game-gold font-bold mb-6">$1 USDC</p>
+
+            {paymentError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-sm mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/40"
+              >
+                <p className="text-red-400 text-sm text-center">{paymentError}</p>
+              </motion.div>
+            )}
+
+            <div className="w-full max-w-sm space-y-3">
+              {!connected ? (
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-500 text-white font-bold text-base rounded-xl shadow-hard-lg font-pixel-heading tracking-wider"
+                >
+                  CONNECT WALLET
+                </button>
+              ) : (
+                <button
+                  onClick={handlePayment}
+                  disabled={paymentLoading}
+                  className="w-full py-4 bg-gradient-to-r from-game-gold to-amber-500 text-black font-bold text-base rounded-xl shadow-hard-lg font-pixel-heading tracking-wider disabled:opacity-50"
+                >
+                  {paymentLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      PROCESSING...
+                    </span>
+                  ) : (
+                    'PAY & OPEN'
+                  )}
+                </button>
+              )}
+
+              <button
+                onClick={() => router.push('/game')}
+                className="w-full py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-colors"
+              >
+                Back
+              </button>
+            </div>
+
+            {connected && (
+              <p className="mt-3 text-xs text-gray-500">
+                {publicKey?.toBase58().slice(0, 8)}...{publicKey?.toBase58().slice(-4)}
+              </p>
+            )}
+
+            {psg1 && (
+              <div className="mt-4 flex items-center justify-center gap-6">
+                <span className="text-xs text-gray-500">[A] Back</span>
+                <span className="text-xs text-emerald-400">[B] {connected ? 'Pay' : 'Connect'}</span>
+              </div>
+            )}
           </motion.div>
         )}
 

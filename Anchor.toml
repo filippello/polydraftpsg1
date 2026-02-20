@@ -1,0 +1,19 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.devnet]
+polydraft_purchase = "2kFruWkndEjnMJkFR5dkKbLjuCpoZ2nx3rHx9KFutKx1"
+
+[programs.mainnet]
+polydraft_purchase = "2kFruWkndEjnMJkFR5dkKbLjuCpoZ2nx3rHx9KFutKx1"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
