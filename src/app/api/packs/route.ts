@@ -8,6 +8,7 @@ import {
 } from '@/lib/supabase/packs';
 import { fetchProfileByAnonymousId } from '@/lib/supabase/profile';
 import { verifyPurchaseReceipt } from '@/lib/solana/verify';
+import { verifyTransferPayment } from '@/lib/solana/verifyTransfer';
 import { PREMIUM_PACK_PRICE } from '@/lib/solana/purchase';
 import type { Outcome } from '@/types';
 
@@ -78,12 +79,25 @@ export async function POST(request: Request) {
     const isPremium = !!premium;
 
     if (isPremium) {
-      // Verify on-chain purchase receipt
-      const receiptValid = await verifyPurchaseReceipt(
-        premium.buyerWallet,
-        pack.id,
-        PREMIUM_PACK_PRICE
-      );
+      const paymentMethod = process.env.NEXT_PUBLIC_PAYMENT_METHOD || 'program';
+      let receiptValid: boolean;
+
+      if (paymentMethod === 'transfer') {
+        // Verify USDC transfer signature on mainnet
+        receiptValid = await verifyTransferPayment(
+          premium.paymentSignature,
+          premium.buyerWallet,
+          PREMIUM_PACK_PRICE
+        );
+      } else {
+        // Verify on-chain purchase receipt (Anchor program)
+        receiptValid = await verifyPurchaseReceipt(
+          premium.buyerWallet,
+          pack.id,
+          PREMIUM_PACK_PRICE
+        );
+      }
+
       if (!receiptValid) {
         return NextResponse.json(
           { error: 'Payment verification failed. Receipt not found on-chain.' },

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useUnifiedWalletContext } from '@jup-ag/wallet-adapter';
 import { purchasePremiumPack, PREMIUM_PACK_PRICE } from '@/lib/solana/purchase';
+import { purchaseWithTransfer } from '@/lib/solana/transfer';
 import { v4 as uuidv4 } from 'uuid';
 import { PackSprite } from '@/components/sprites/PackSprite';
 import { SwipeCard } from '@/components/game/SwipeCard';
@@ -281,12 +282,10 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     setPaymentLoading(true);
     setPaymentError(null);
     try {
-      const result = await purchasePremiumPack(
-        connection,
-        publicKey,
-        packId,
-        sendTransaction
-      );
+      const paymentMethod = process.env.NEXT_PUBLIC_PAYMENT_METHOD || 'program';
+      const result = paymentMethod === 'transfer'
+        ? await purchaseWithTransfer(connection, publicKey, packId, sendTransaction)
+        : await purchasePremiumPack(connection, publicKey, packId, sendTransaction);
       setPaymentSignature(result.signature);
       setBuyerWallet(publicKey.toBase58());
       playSound('pack_open');

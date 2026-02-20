@@ -9,12 +9,18 @@ interface SolanaWalletProviderProps {
 }
 
 export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
+  const paymentMethod = process.env.NEXT_PUBLIC_PAYMENT_METHOD || 'program';
+
   const endpoint = useMemo(() => {
+    // Transfer mode always uses mainnet
+    if (paymentMethod === 'transfer') {
+      return 'https://api.mainnet-beta.solana.com';
+    }
     if (process.env.NEXT_PUBLIC_SOLANA_RPC_URL) {
       return process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
     }
     return 'https://api.mainnet-beta.solana.com';
-  }, []);
+  }, [paymentMethod]);
 
   // Fix MWA 404 on Android: After authorize(), Jupiter Mobile returns
   // wallet_uri_base "https://jup.ag/solana-wallet-adapter" stored in-memory.
@@ -87,7 +93,7 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
         wallets={[]}
         config={{
           autoConnect: true,
-          env: (process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.includes('devnet') ? 'devnet' : 'mainnet-beta') as 'mainnet-beta' | 'devnet',
+          env: (paymentMethod === 'transfer' ? 'mainnet-beta' : process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.includes('devnet') ? 'devnet' : 'mainnet-beta') as 'mainnet-beta' | 'devnet',
           metadata: {
             name: 'Polydraft',
             description: 'Prediction Markets on Jupiter',
