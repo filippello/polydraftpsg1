@@ -236,7 +236,7 @@ export function SwipeCard({ event, position, total, onSwipe, isTop, psg1Mode, ch
           <div className={`flex-1 flex flex-col ${psg1Mode ? 'p-2' : 'p-4'} bg-card-bg/95`}>
             {/* Title */}
             <h2 className={`${psg1Mode ? 'text-base mb-1' : 'text-xl mb-4'} font-bold leading-tight text-center font-pixel-body`}>
-              {isVsMatch ? `${labelB} vs ${labelA}` : event.title}
+              {isVsMatch ? `${event.outcome_b_label} vs ${event.outcome_a_label}` : event.title}
             </h2>
 
             {/* VS display */}
@@ -247,7 +247,7 @@ export function SwipeCard({ event, position, total, onSwipe, isTop, psg1Mode, ch
                     {/* Team B - Left (swipe left = B) */}
                     <div className="flex-1 text-right">
                       <p className={`font-bold ${psg1Mode ? 'text-base' : 'text-xl'} font-pixel-body text-outcome-b`}>
-                        {labelB}
+                        {event.outcome_b_label}
                       </p>
                       <p className={`${psg1Mode ? 'text-lg' : 'text-2xl'} font-pixel-body text-white mt-1`}>
                         {formatProbability(event.outcome_b_probability)}
@@ -260,7 +260,7 @@ export function SwipeCard({ event, position, total, onSwipe, isTop, psg1Mode, ch
                     {/* Team A - Right (swipe right = A) */}
                     <div className="flex-1 text-left">
                       <p className={`font-bold ${psg1Mode ? 'text-base' : 'text-xl'} font-pixel-body text-outcome-a`}>
-                        {labelA}
+                        {event.outcome_a_label}
                       </p>
                       <p className={`${psg1Mode ? 'text-lg' : 'text-2xl'} font-pixel-body text-white mt-1`}>
                         {formatProbability(event.outcome_a_probability)}
