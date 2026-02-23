@@ -204,7 +204,7 @@ export function SwipeCard({ event, position, total, onSwipe, isTop, psg1Mode, ch
           </div>
 
           {/* Image area */}
-          <div className={`relative w-full ${psg1Mode ? 'h-[45%]' : 'aspect-[16/10]'} overflow-hidden`}>
+          <div className={`relative w-full ${psg1Mode ? 'h-[52%]' : 'aspect-[16/10]'} overflow-hidden`}>
             {event.image_url ? (
               <Image
                 src={event.image_url}
