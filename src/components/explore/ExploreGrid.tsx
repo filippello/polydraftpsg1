@@ -8,6 +8,7 @@ import { useExploreStore } from '@/stores/explore';
 import { getExploreMarkets, getFeaturedMarkets } from '@/lib/jupiter/client';
 import { isPSG1 } from '@/lib/platform';
 import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
+import { GP, isGamepadButtonPressed } from '@/lib/gamepad';
 
 interface ExploreGridProps {
   initialFetch?: boolean;
@@ -95,6 +96,29 @@ export function ExploreGrid({ initialFetch = true, onBack }: ExploreGridProps) {
     onSelect,
     onBack,
   });
+
+  // PSG1: Y button → open Jupiter profile
+  useEffect(() => {
+    if (!psg1) return;
+    const openProfile = () => window.open('https://jup.ag/prediction/profile', '_blank');
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'y' || e.key === 'Y') { e.preventDefault(); openProfile(); }
+    };
+    let rafId: number | null = null;
+    let prevY = isGamepadButtonPressed(GP.Y);
+    const poll = () => {
+      const yNow = isGamepadButtonPressed(GP.Y);
+      if (yNow && !prevY) openProfile();
+      prevY = yNow;
+      rafId = requestAnimationFrame(poll);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [psg1]);
 
   // Auto-scroll focused card into view
   useEffect(() => {
