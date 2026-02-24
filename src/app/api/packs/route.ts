@@ -6,7 +6,7 @@ import {
   getWeeklyPackStatus,
   WEEKLY_PACK_LIMIT,
 } from '@/lib/supabase/packs';
-import { fetchProfileByAnonymousId } from '@/lib/supabase/profile';
+import { fetchProfileByAnonymousId, fetchProfileById } from '@/lib/supabase/profile';
 import { verifyPurchaseReceipt } from '@/lib/solana/verify';
 import { verifyTransferPayment } from '@/lib/solana/verifyTransfer';
 import { PREMIUM_PACK_PRICE } from '@/lib/solana/purchase';
@@ -18,8 +18,9 @@ import type { Outcome } from '@/types';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { anonymousId, pack, picks, premium } = body as {
-      anonymousId: string;
+    const { anonymousId, profileId, pack, picks, premium } = body as {
+      anonymousId?: string;
+      profileId?: string;
       pack: {
         id: string;
         packTypeId: string;
@@ -43,9 +44,9 @@ export async function POST(request: Request) {
       };
     };
 
-    if (!anonymousId) {
+    if (!anonymousId && !profileId) {
       return NextResponse.json(
-        { error: 'anonymousId is required' },
+        { error: 'anonymousId or profileId is required' },
         { status: 400 }
       );
     }
@@ -67,8 +68,10 @@ export async function POST(request: Request) {
       });
     }
 
-    // Get the profile for this anonymous user
-    const profile = await fetchProfileByAnonymousId(anonymousId);
+    // Get the profile — prefer profileId (wallet-auth), fallback to anonymousId
+    const profile = profileId
+      ? await fetchProfileById(profileId)
+      : await fetchProfileByAnonymousId(anonymousId!);
     if (!profile) {
       return NextResponse.json(
         { error: 'Profile not found. Please ensure profile is initialized first.' },

@@ -94,12 +94,13 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   const addPack = useMyPacksStore((state) => state.addPack);
   const markPackSynced = useMyPacksStore((state) => state.markPackSynced);
   const anonymousId = useSessionStore((state) => state.anonymousId);
+  const profileId = useSessionStore((state) => state.profileId);
   const isProfileSynced = useSessionStore((state) => state.isProfileSynced);
 
   // Check if user can open a pack
   useEffect(() => {
     async function checkAvailability() {
-      if (!anonymousId || !isProfileSynced) return;
+      if ((!anonymousId && !profileId) || !isProfileSynced) return;
 
       // Premium packs skip weekly limit — go straight to payment
       if (isPremium) {
@@ -132,7 +133,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     if (phase === 'checking') {
       checkAvailability();
     }
-  }, [anonymousId, isProfileSynced, phase, isPremium]);
+  }, [anonymousId, profileId, isProfileSynced, phase, isPremium]);
 
   // Initialize pack with mock events
   useEffect(() => {
@@ -413,7 +414,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       drawProbabilitySnapshot?: number;
     }>
   ) => {
-    if (!anonymousId) return;
+    if (!anonymousId && !profileId) return;
 
     try {
       const response = await fetch('/api/packs', {
@@ -423,6 +424,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
         },
         body: JSON.stringify({
           anonymousId,
+          profileId,
           pack: packData,
           picks: picksData,
           ...(isPremium && paymentSignature && buyerWallet && {
@@ -447,7 +449,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       console.error('Error syncing pack to database:', error);
       // Pack is still saved locally, will work in local-first mode
     }
-  }, [anonymousId, markPackSynced, isPremium, paymentSignature, buyerWallet]);
+  }, [anonymousId, profileId, markPackSynced, isPremium, paymentSignature, buyerWallet]);
 
   // Save to myPacks when confirming starts
   useEffect(() => {

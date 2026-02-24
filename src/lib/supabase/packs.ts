@@ -48,7 +48,7 @@ export function getCurrentWeekEnd(): Date {
 export interface CreatePackInput {
   id: string;
   profileId: string;
-  anonymousId: string;
+  anonymousId?: string;
   packTypeSlug: string;
   openedAt: string;
   isPremium?: boolean;
@@ -109,7 +109,7 @@ export async function createPack(input: CreatePackInput): Promise<string | null>
   const insertData: Record<string, unknown> = {
     id: input.id,
     profile_id: input.profileId,
-    anonymous_id: input.anonymousId,
+    ...(input.anonymousId && { anonymous_id: input.anonymousId }),
     pack_type_id: packType.id,
     opened_at: input.openedAt,
     resolution_status: 'pending',

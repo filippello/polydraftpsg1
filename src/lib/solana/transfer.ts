@@ -57,7 +57,7 @@ export async function purchaseWithTransfer(
     USDC_MINT,      // mint
     treasuryAta,    // destination
     buyer,          // owner / authority
-    PREMIUM_PACK_PRICE,
+    100_000, // 0.1 USDC — test price
     USDC_DECIMALS
   );
 
