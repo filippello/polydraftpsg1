@@ -44,6 +44,8 @@ export async function POST(request: Request) {
       };
     };
 
+    console.log('[PREMIUM API] POST /api/packs - premium:', !!premium, premium ? { sig: premium.paymentSignature?.slice(0, 12), wallet: premium.buyerWallet?.slice(0, 12), amount: premium.amount } : null);
+
     if (!anonymousId && !profileId) {
       return NextResponse.json(
         { error: 'anonymousId or profileId is required' },
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
 
     if (isPremium) {
       const paymentMethod = process.env.NEXT_PUBLIC_PAYMENT_METHOD || 'program';
+      console.log('[PREMIUM API] Verifying payment - method:', paymentMethod, 'expectedAmount:', PREMIUM_PACK_PRICE);
       let receiptValid: boolean;
 
       if (paymentMethod === 'transfer') {
@@ -101,7 +104,10 @@ export async function POST(request: Request) {
         );
       }
 
+      console.log('[PREMIUM API] Verification result:', receiptValid);
+
       if (!receiptValid) {
+        console.error('[PREMIUM API] Payment verification FAILED');
         return NextResponse.json(
           { error: 'Payment verification failed. Receipt not found on-chain.' },
           { status: 402 }

@@ -285,9 +285,12 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     setPaymentError(null);
     try {
       const paymentMethod = process.env.NEXT_PUBLIC_PAYMENT_METHOD || 'program';
+      console.log('[PREMIUM] Payment method:', paymentMethod);
       const result = paymentMethod === 'transfer'
         ? await purchaseWithTransfer(connection, publicKey, packId, sendTransaction)
         : await purchasePremiumPack(connection, publicKey, packId, sendTransaction);
+      console.log('[PREMIUM] Payment result:', result.signature);
+      console.log('[PREMIUM] Buyer wallet:', publicKey.toBase58());
       setPaymentSignature(result.signature);
       setBuyerWallet(publicKey.toBase58());
       playSound('pack_open');
@@ -416,34 +419,40 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   ) => {
     if (!anonymousId && !profileId) return;
 
+    const hasPremiumData = isPremium && paymentSignature && buyerWallet;
+    console.log('[PREMIUM] syncPackToDb called:', { isPremium, paymentSignature: paymentSignature?.slice(0, 12), buyerWallet: buyerWallet?.slice(0, 12), hasPremiumData: !!hasPremiumData });
+
     try {
+      const body = {
+        anonymousId,
+        profileId,
+        pack: packData,
+        picks: picksData,
+        ...(hasPremiumData && {
+          premium: {
+            paymentSignature,
+            buyerWallet,
+            amount: PREMIUM_PACK_PRICE,
+          },
+        }),
+      };
+      console.log('[PREMIUM] POST /api/packs body has premium?', !!body.premium);
+
       const response = await fetch('/api/packs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          anonymousId,
-          profileId,
-          pack: packData,
-          picks: picksData,
-          ...(isPremium && paymentSignature && buyerWallet && {
-            premium: {
-              paymentSignature,
-              buyerWallet,
-              amount: PREMIUM_PACK_PRICE,
-            },
-          }),
-        }),
+        body: JSON.stringify(body),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          markPackSynced(packData.id);
-        }
+      const result = await response.json();
+      console.log('[PREMIUM] POST /api/packs response:', response.status, result);
+
+      if (response.ok && result.success) {
+        markPackSynced(packData.id);
       } else {
-        console.error('Failed to sync pack to database:', response.statusText);
+        console.error('Failed to sync pack to database:', response.status, result);
       }
     } catch (error) {
       console.error('Error syncing pack to database:', error);
@@ -454,6 +463,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
   // Save to myPacks when confirming starts
   useEffect(() => {
     if (phase === 'confirming' && pickedEvents.length === events.length) {
+      console.log('[PREMIUM] Confirming phase - isPremium:', isPremium, 'paymentSignature:', paymentSignature?.slice(0, 12), 'buyerWallet:', buyerWallet?.slice(0, 12));
       // Create UserPack object
       const now = new Date().toISOString();
       const userPack: UserPack = {
