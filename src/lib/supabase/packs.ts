@@ -96,14 +96,15 @@ async function getPackTypeBySlug(slug: string): Promise<{ id: string } | null> {
 /**
  * Create a new user pack in the database
  */
-export async function createPack(input: CreatePackInput): Promise<string | null> {
+export async function createPack(input: CreatePackInput): Promise<{ id: string } | { error: string }> {
   const supabase = createServiceClient();
 
   // Look up the pack type by slug to get the real UUID
   const packType = await getPackTypeBySlug(input.packTypeSlug);
   if (!packType) {
-    console.error('Pack type not found for slug:', input.packTypeSlug);
-    return null;
+    const msg = `Pack type not found for slug: ${input.packTypeSlug}`;
+    console.error(msg);
+    return { error: msg };
   }
 
   const insertData: Record<string, unknown> = {
@@ -134,11 +135,12 @@ export async function createPack(input: CreatePackInput): Promise<string | null>
     .single();
 
   if (error) {
-    console.error('Error creating pack:', error, 'insertData:', JSON.stringify(insertData));
-    return null;
+    const msg = `Supabase insert error: ${error.code} - ${error.message} (${error.details})`;
+    console.error('Error creating pack:', msg, 'insertData:', JSON.stringify(insertData));
+    return { error: msg };
   }
 
-  return data.id;
+  return { id: data.id };
 }
 
 /**
@@ -224,17 +226,14 @@ export async function createPicks(picks: CreatePickInput[]): Promise<boolean> {
 export async function createPackWithPicks(
   packInput: CreatePackInput,
   picksInput: Omit<CreatePickInput, 'userPackId'>[]
-): Promise<{ packId: string; error?: string } | null> {
-  console.log('[createPackWithPicks] Starting - packId:', packInput.id, 'isPremium:', packInput.isPremium, 'paymentAmount:', packInput.paymentAmount);
-
+): Promise<{ packId: string } | { error: string }> {
   // Create the pack first
-  const packId = await createPack(packInput);
-  if (!packId) {
-    console.error('[createPackWithPicks] createPack returned null');
-    return null;
+  const packResult = await createPack(packInput);
+  if ('error' in packResult) {
+    return { error: `createPack failed: ${packResult.error}` };
   }
 
-  console.log('[createPackWithPicks] Pack created successfully:', packId, '- now creating', picksInput.length, 'picks');
+  const packId = packResult.id;
 
   // Create the picks
   const picksWithPackId = picksInput.map((pick) => ({
@@ -244,11 +243,9 @@ export async function createPackWithPicks(
 
   const picksCreated = await createPicks(picksWithPackId);
   if (!picksCreated) {
-    console.error('[createPackWithPicks] Failed to create picks for pack:', packId);
-    return null;
+    return { error: `createPicks failed for pack ${packId}` };
   }
 
-  console.log('[createPackWithPicks] All picks created successfully');
   return { packId };
 }
 
