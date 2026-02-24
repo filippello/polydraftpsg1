@@ -788,7 +788,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 </div>
                 {phase === 'dissolving' && (
                   <PixelDissolve
-                    imageSrc="/images/packs/sportpack_1.png"
+                    imageSrc={isPremium ? '/images/packs/sportpackp.png' : '/images/packs/sportpack_1.png'}
                     width={256}
                     height={320}
                     onComplete={handleDissolveComplete}

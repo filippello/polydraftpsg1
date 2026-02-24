@@ -34,6 +34,7 @@ export interface PackSummary {
   totalPoints: number;
   pickPreviews: PickPreview[];
   status: PackStatus;
+  isPremium: boolean;
 }
 
 // ============================================
@@ -124,6 +125,7 @@ function computePackSummary(storedPack: StoredPack): PackSummary {
       .sort((a, b) => a.position - b.position)
       .map(computePickPreview),
     status: computePackStatus(picks),
+    isPremium: !!pack.is_premium,
   };
 }
 

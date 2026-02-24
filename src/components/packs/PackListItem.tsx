@@ -59,6 +59,7 @@ export function PackListItem({ pack, index, focused }: PackListItemProps) {
                 type={pack.packTypeSlug as 'sports'}
                 size="sm"
                 glowing={pack.status === 'has_reveals'}
+                premium={pack.isPremium}
               />
             </div>
 
