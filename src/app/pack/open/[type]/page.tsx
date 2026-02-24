@@ -432,7 +432,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
           premium: {
             paymentSignature,
             buyerWallet,
-            amount: PREMIUM_PACK_PRICE,
+            amount: PREMIUM_PACK_PRICE / 1_000_000,
           },
         }),
       };
@@ -784,7 +784,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             >
               <div className="relative w-64 h-[320px]">
                 <div style={{ visibility: phase === 'dissolving' ? 'hidden' : 'visible' }}>
-                  <PackSprite type={type as 'sports'} size="xl" glowing={phase === 'opening'} />
+                  <PackSprite type={type as 'sports'} size="xl" glowing={phase === 'opening'} premium={isPremium} />
                 </div>
                 {phase === 'dissolving' && (
                   <PixelDissolve
