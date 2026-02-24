@@ -15,7 +15,6 @@ import {
   getAssociatedTokenAddress,
   createTransferCheckedInstruction,
 } from '@solana/spl-token';
-import { PREMIUM_PACK_PRICE } from './purchase';
 
 /** USDC mint on mainnet-beta (6 decimals) */
 const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
