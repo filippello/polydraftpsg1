@@ -1033,7 +1033,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
 
             {/* Jackpot Card */}
             <motion.div
-              className="w-full max-w-sm bg-gradient-to-br from-amber-900/40 via-yellow-800/30 to-amber-900/40 border-2 border-game-gold rounded-xl p-5 mb-6 relative overflow-hidden"
+              className={`w-full ${psg1 ? 'max-w-md' : 'max-w-sm'} bg-gradient-to-br from-amber-900/40 via-yellow-800/30 to-amber-900/40 border-2 border-game-gold rounded-xl ${psg1 ? 'p-3 mb-4' : 'p-5 mb-6'} relative overflow-hidden`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3, type: 'spring', stiffness: 300, damping: 25 }}
@@ -1045,7 +1045,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
               />
 
-              <p className="text-center text-sm font-bold text-game-gold mb-3 tracking-widest uppercase">
+              <p className={`text-center ${psg1 ? 'text-xs mb-1' : 'text-sm mb-3'} font-bold text-game-gold tracking-widest uppercase`}>
                 POTENTIAL JACKPOT
               </p>
 
@@ -1055,13 +1055,13 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.5, type: 'spring', stiffness: 400, damping: 20 }}
               >
-                <span className="text-4xl font-bold text-white">
+                <span className={`${psg1 ? 'text-2xl' : 'text-4xl'} font-bold text-white`}>
                   ${jackpotData.maxPoints.totalPoints.toFixed(2)} USD
                 </span>
               </motion.div>
 
               <motion.p
-                className="text-center text-sm text-gray-300 mt-3"
+                className={`text-center ${psg1 ? 'text-xs mt-1' : 'text-sm mt-3'} text-gray-300`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
@@ -1070,7 +1070,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
               </motion.p>
 
               <motion.p
-                className="text-center text-sm text-game-gold mt-2"
+                className={`text-center ${psg1 ? 'text-xs mt-1' : 'text-sm mt-2'} text-game-gold`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.9 }}
