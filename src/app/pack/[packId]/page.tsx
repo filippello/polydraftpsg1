@@ -43,7 +43,7 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
     setShowSummary(false);
 
     // Premium packs bypass weekly limits — go straight to purchase flow
-    if (storedPack?.is_premium) {
+    if (storedPack?.pack.is_premium) {
       window.location.href = '/pack/open/sports?premium=true';
       return;
     }
