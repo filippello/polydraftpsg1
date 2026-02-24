@@ -42,6 +42,12 @@ export default function QueuePage({ params }: { params: { packId: string } }) {
     setSummaryDismissed(true); // Prevent summary from re-opening
     setShowSummary(false);
 
+    // Premium packs bypass weekly limits — go straight to purchase flow
+    if (storedPack?.is_premium) {
+      window.location.href = '/pack/open/sports?premium=true';
+      return;
+    }
+
     // Count packs opened this week from local storage (for instant/accurate feedback)
     const getLocalPacksThisWeek = () => {
       const now = new Date();
