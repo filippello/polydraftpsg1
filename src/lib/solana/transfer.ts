@@ -47,7 +47,7 @@ export async function purchaseWithTransfer(
     transaction: VersionedTransaction,
     connection: Connection
   ) => Promise<string>
-): Promise<{ signature: string }> {
+): Promise<{ signature: string; blockhash: string; lastValidBlockHeight: number }> {
   const buyerAta = await getAssociatedTokenAddress(USDC_MINT, buyer);
   const treasuryAta = await getAssociatedTokenAddress(USDC_MINT, getTreasury());
 
@@ -60,7 +60,7 @@ export async function purchaseWithTransfer(
     USDC_DECIMALS
   );
 
-  const { blockhash } = await connection.getLatestBlockhash();
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
   const message = new TransactionMessage({
     payerKey: buyer,
     recentBlockhash: blockhash,
@@ -70,5 +70,5 @@ export async function purchaseWithTransfer(
   const tx = new VersionedTransaction(message);
   const signature = await sendTransaction(tx, connection);
 
-  return { signature };
+  return { signature, blockhash, lastValidBlockHeight };
 }

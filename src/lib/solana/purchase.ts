@@ -152,13 +152,13 @@ export async function purchasePremiumPack(
     transaction: VersionedTransaction,
     connection: Connection
   ) => Promise<string>
-): Promise<{ signature: string }> {
+): Promise<{ signature: string; blockhash: string; lastValidBlockHeight: number }> {
   const amount = BigInt(PREMIUM_PACK_PRICE);
 
   const sanitized = clientSeed.replace(/-/g, '');
   const ix = await buildBuyPackInstruction(buyer, sanitized, amount);
 
-  const { blockhash } = await connection.getLatestBlockhash();
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
   const message = new TransactionMessage({
     payerKey: buyer,
     recentBlockhash: blockhash,
@@ -169,5 +169,5 @@ export async function purchasePremiumPack(
 
   const signature = await sendTransaction(tx, connection);
 
-  return { signature };
+  return { signature, blockhash, lastValidBlockHeight };
 }

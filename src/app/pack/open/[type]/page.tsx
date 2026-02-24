@@ -29,7 +29,7 @@ import { usePSG1Navigation } from '@/hooks/usePSG1Navigation';
 import { PixelDissolve } from '@/components/animations/PixelDissolve';
 import type { Event, Outcome, UserPack, UserPick } from '@/types';
 
-type Phase = 'checking' | 'loading' | 'payment' | 'opening' | 'dissolving' | 'revealing' | 'swiping' | 'confirming' | 'blocked' | 'error';
+type Phase = 'checking' | 'loading' | 'payment' | 'confirming_tx' | 'opening' | 'dissolving' | 'revealing' | 'swiping' | 'confirming' | 'blocked' | 'error';
 
 interface PickedEvent {
   event: Event;
@@ -275,6 +275,9 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
     };
   }, [psg1, phase, router]);
 
+  // Confirming tx state
+  const [confirmingSignature, setConfirmingSignature] = useState<string | null>(null);
+
   // Handle premium pack payment
   const handlePayment = useCallback(async () => {
     if (!publicKey || !sendTransaction) {
@@ -293,12 +296,29 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
       console.log('[PREMIUM] Buyer wallet:', publicKey.toBase58());
       setPaymentSignature(result.signature);
       setBuyerWallet(publicKey.toBase58());
+      setConfirmingSignature(result.signature);
+      setPhase('confirming_tx');
+      setPaymentLoading(false);
+
+      // Wait for on-chain confirmation
+      console.log('[PREMIUM] Confirming transaction...');
+      await connection.confirmTransaction(
+        {
+          signature: result.signature,
+          blockhash: result.blockhash,
+          lastValidBlockHeight: result.lastValidBlockHeight,
+        },
+        'confirmed'
+      );
+      console.log('[PREMIUM] Transaction confirmed!');
       playSound('pack_open');
       setPhase('opening');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Payment failed';
+      console.error('[PREMIUM] Payment/confirmation error:', msg);
       setPaymentError(msg);
-    } finally {
+      setConfirmingSignature(null);
+      setPhase('payment');
       setPaymentLoading(false);
     }
   }, [publicKey, sendTransaction, connection, packId, setShowModal]);
@@ -757,6 +777,36 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
                 <span className="text-xs text-emerald-400">[B] {paymentFocused === 0 ? (connected ? 'Pay' : 'Connect') : 'Back'}</span>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {/* Confirming Transaction Phase */}
+        {phase === 'confirming_tx' && (
+          <motion.div
+            key="confirming_tx"
+            className="flex-1 flex flex-col items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <PackSprite type={type as 'sports'} size="lg" premium />
+
+            <div className="mt-6 flex flex-col items-center gap-4">
+              <div className="w-10 h-10 border-4 border-game-gold border-t-transparent rounded-full animate-spin" />
+              <p className="text-lg font-bold font-pixel-heading tracking-wider text-shadow-balatro">
+                Confirming transaction...
+              </p>
+              {confirmingSignature && (
+                <a
+                  href={`https://solscan.io/tx/${confirmingSignature}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-500 hover:text-game-gold transition-colors"
+                >
+                  {confirmingSignature.slice(0, 8)}...{confirmingSignature.slice(-8)}
+                </a>
+              )}
+            </div>
           </motion.div>
         )}
 
