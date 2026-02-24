@@ -156,8 +156,9 @@ export async function POST(request: Request) {
     );
 
     if (!result) {
+      console.error('[PREMIUM API] createPackWithPicks returned null for pack:', pack.id, 'isPremium:', isPremium);
       return NextResponse.json(
-        { error: 'Failed to create pack' },
+        { error: 'Failed to create pack', packId: pack.id, isPremium },
         { status: 500 }
       );
     }

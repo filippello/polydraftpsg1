@@ -134,7 +134,7 @@ export async function createPack(input: CreatePackInput): Promise<string | null>
     .single();
 
   if (error) {
-    console.error('Error creating pack:', error);
+    console.error('Error creating pack:', error, 'insertData:', JSON.stringify(insertData));
     return null;
   }
 
@@ -224,12 +224,17 @@ export async function createPicks(picks: CreatePickInput[]): Promise<boolean> {
 export async function createPackWithPicks(
   packInput: CreatePackInput,
   picksInput: Omit<CreatePickInput, 'userPackId'>[]
-): Promise<{ packId: string } | null> {
+): Promise<{ packId: string; error?: string } | null> {
+  console.log('[createPackWithPicks] Starting - packId:', packInput.id, 'isPremium:', packInput.isPremium, 'paymentAmount:', packInput.paymentAmount);
+
   // Create the pack first
   const packId = await createPack(packInput);
   if (!packId) {
+    console.error('[createPackWithPicks] createPack returned null');
     return null;
   }
+
+  console.log('[createPackWithPicks] Pack created successfully:', packId, '- now creating', picksInput.length, 'picks');
 
   // Create the picks
   const picksWithPackId = picksInput.map((pick) => ({
@@ -239,11 +244,11 @@ export async function createPackWithPicks(
 
   const picksCreated = await createPicks(picksWithPackId);
   if (!picksCreated) {
-    // We could delete the pack here, but for simplicity we'll leave it
-    console.error('Failed to create picks for pack:', packId);
+    console.error('[createPackWithPicks] Failed to create picks for pack:', packId);
     return null;
   }
 
+  console.log('[createPackWithPicks] All picks created successfully');
   return { packId };
 }
 
