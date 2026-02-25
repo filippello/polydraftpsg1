@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Polydraft',
     description: 'Fantasy betting with pixel art packs. Open packs, make picks, win points!',
     start_url: '/',
-    display: 'standalone',
+    display: 'fullscreen',
     orientation: isPSG1() ? 'landscape' : 'portrait',
     background_color: '#1a1a2e',
     theme_color: '#1a1a2e',
