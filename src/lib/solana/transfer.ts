@@ -14,6 +14,7 @@ import {
 import {
   getAssociatedTokenAddress,
   createTransferCheckedInstruction,
+  createAssociatedTokenAccountIdempotentInstruction,
 } from '@solana/spl-token';
 
 /** PLAY token mint on mainnet-beta (6 decimals) */
@@ -51,6 +52,13 @@ export async function purchaseWithTransfer(
   const buyerAta = await getAssociatedTokenAddress(PLAY_MINT, buyer);
   const treasuryAta = await getAssociatedTokenAddress(PLAY_MINT, getTreasury());
 
+  const createAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+    buyer,          // payer
+    treasuryAta,    // associatedToken
+    getTreasury(),  // owner
+    PLAY_MINT       // mint
+  );
+
   const ix = createTransferCheckedInstruction(
     buyerAta,       // source
     PLAY_MINT,      // mint
@@ -64,7 +72,7 @@ export async function purchaseWithTransfer(
   const message = new TransactionMessage({
     payerKey: buyer,
     recentBlockhash: blockhash,
-    instructions: [ix],
+    instructions: [createAtaIx, ix],
   }).compileToV0Message();
 
   const tx = new VersionedTransaction(message);
