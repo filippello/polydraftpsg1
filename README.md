@@ -27,7 +27,12 @@ Built with a retro pixel art aesthetic inspired by Balatro, designed for both we
 
 ## Screenshots
 
-> Screenshots coming soon — pack opening, card swiping, explore mode, reveal sequence.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/6e22341f-3fba-4c98-a01d-cd8a99cb6c65" width="24%" />
+  <img src="https://github.com/user-attachments/assets/11a6cae3-b29f-43d9-878f-a1210f8f351e" width="24%" />
+  <img src="https://github.com/user-attachments/assets/1589e0e4-8b1d-47fd-8605-7735fae580c6" width="24%" />
+  <img src="https://github.com/user-attachments/assets/cb9009ae-dcc1-43b1-86c5-09f44082cd62" width="24%" />
+</p>
 
 ## Features
 
