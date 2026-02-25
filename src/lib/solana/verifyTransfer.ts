@@ -1,7 +1,7 @@
 /**
- * Server-side USDC Transfer Verification
+ * Server-side PLAY Token Transfer Verification
  *
- * Verifies that a transaction signature corresponds to a valid USDC transfer
+ * Verifies that a transaction signature corresponds to a valid PLAY token transfer
  * to the treasury wallet with the expected amount. Used when
  * NEXT_PUBLIC_PAYMENT_METHOD=transfer.
  */
@@ -9,8 +9,8 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 
-/** USDC mint on mainnet-beta */
-const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+/** PLAY token mint on mainnet-beta */
+const PLAY_MINT = new PublicKey('PLAYs3GSSadH2q2JLS7djp7yzeT75NK78XgrE5YLrfq');
 
 /** Mainnet RPC — transfer mode always uses mainnet */
 const MAINNET_RPC =
@@ -50,21 +50,21 @@ async function fetchParsedTransaction(
 }
 
 /**
- * Verify that a transaction signature is a valid USDC transfer to our treasury.
+ * Verify that a transaction signature is a valid PLAY token transfer to our treasury.
  *
  * Checks:
  * - Transaction succeeded (meta.err === null)
  * - Contains a SPL token transferChecked (or transfer) instruction
- * - Destination = treasury USDC ATA
+ * - Destination = treasury PLAY ATA
  * - Amount = expectedAmount
  * - Authority = buyerWallet
- * - Mint = USDC (for transferChecked)
+ * - Mint = PLAY (for transferChecked)
  *
  * Anti double-spend: relies on unique index on payment_signature in DB.
  *
  * @param signature - Transaction signature
  * @param buyerWallet - Base58 public key of the buyer
- * @param expectedAmount - Expected USDC amount in raw units (6 decimals)
+ * @param expectedAmount - Expected PLAY amount in raw units (6 decimals)
  * @returns true if the transfer is valid
  */
 export async function verifyTransferPayment(
@@ -74,7 +74,7 @@ export async function verifyTransferPayment(
 ): Promise<boolean> {
   try {
     const connection = new Connection(MAINNET_RPC, 'confirmed');
-    const treasuryAta = await getAssociatedTokenAddress(USDC_MINT, getTreasury());
+    const treasuryAta = await getAssociatedTokenAddress(PLAY_MINT, getTreasury());
     const treasuryAtaStr = treasuryAta.toBase58();
 
     const tx = await fetchParsedTransaction(connection, signature);
@@ -111,9 +111,9 @@ export async function verifyTransferPayment(
         // transferChecked includes mint and tokenAmount
         const matchesDest = info.destination === treasuryAtaStr;
         const matchesAuth = info.authority === buyerWallet;
-        const matchesMint = info.mint === USDC_MINT.toBase58();
+        const matchesMint = info.mint === PLAY_MINT.toBase58();
         const rawAmount = Number(info.tokenAmount?.amount ?? '0');
-        const matchesAmount = rawAmount === expectedAmount || rawAmount === 100_000; // accept test price
+        const matchesAmount = rawAmount === expectedAmount;
 
         if (matchesDest && matchesAuth && matchesMint && matchesAmount) {
           return true;
@@ -123,7 +123,7 @@ export async function verifyTransferPayment(
         const matchesDest = info.destination === treasuryAtaStr;
         const matchesAuth = info.authority === buyerWallet;
         const rawAmount = Number(info.amount ?? '0');
-        const matchesAmount = rawAmount === expectedAmount || rawAmount === 100_000; // accept test price
+        const matchesAmount = rawAmount === expectedAmount;
 
         if (matchesDest && matchesAuth && matchesAmount) {
           return true;

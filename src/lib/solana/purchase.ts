@@ -42,8 +42,8 @@ function getTreasury(): PublicKey {
 /** USDC mint on mainnet-beta (6 decimals) */
 const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 
-/** Fixed premium pack price: $1 USDC = 1_000_000 (6 decimal places) */
-export const PREMIUM_PACK_PRICE = 1_000_000;
+/** Fixed premium pack price: 100 PLAY = 100_000_000 (6 decimal places) */
+export const PREMIUM_PACK_PRICE = 100_000_000;
 
 /** Anchor discriminator for buy_pack instruction (first 8 bytes of sha256("global:buy_pack")) */
 const BUY_PACK_DISCRIMINATOR = Buffer.from([

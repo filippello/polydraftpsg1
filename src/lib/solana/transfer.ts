@@ -1,8 +1,8 @@
 /**
- * Simple USDC Transfer for Premium Pack Purchase (mainnet)
+ * Simple PLAY Token Transfer for Premium Pack Purchase (mainnet)
  *
  * Alternative to the Anchor program purchase — sends a direct SPL token
- * transfer of USDC to the treasury wallet. Works with any wallet on mainnet.
+ * transfer of PLAY to the treasury wallet. Works with any wallet on mainnet.
  */
 
 import {
@@ -16,9 +16,9 @@ import {
   createTransferCheckedInstruction,
 } from '@solana/spl-token';
 
-/** USDC mint on mainnet-beta (6 decimals) */
-const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-const USDC_DECIMALS = 6;
+/** PLAY token mint on mainnet-beta (6 decimals) */
+const PLAY_MINT = new PublicKey('PLAYs3GSSadH2q2JLS7djp7yzeT75NK78XgrE5YLrfq');
+const PLAY_DECIMALS = 6;
 
 let _treasury: PublicKey | null = null;
 function getTreasury(): PublicKey {
@@ -31,7 +31,7 @@ function getTreasury(): PublicKey {
 }
 
 /**
- * Build, send, and return the signature of a USDC transfer to the treasury.
+ * Build, send, and return the signature of a PLAY token transfer to the treasury.
  *
  * @param connection - Solana RPC connection
  * @param buyer - Buyer's public key
@@ -48,16 +48,16 @@ export async function purchaseWithTransfer(
     connection: Connection
   ) => Promise<string>
 ): Promise<{ signature: string; blockhash: string; lastValidBlockHeight: number }> {
-  const buyerAta = await getAssociatedTokenAddress(USDC_MINT, buyer);
-  const treasuryAta = await getAssociatedTokenAddress(USDC_MINT, getTreasury());
+  const buyerAta = await getAssociatedTokenAddress(PLAY_MINT, buyer);
+  const treasuryAta = await getAssociatedTokenAddress(PLAY_MINT, getTreasury());
 
   const ix = createTransferCheckedInstruction(
     buyerAta,       // source
-    USDC_MINT,      // mint
+    PLAY_MINT,      // mint
     treasuryAta,    // destination
     buyer,          // owner / authority
-    100_000, // 0.1 USDC — test price
-    USDC_DECIMALS
+    100_000_000,    // 100 PLAY (6 decimals)
+    PLAY_DECIMALS
   );
 
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();

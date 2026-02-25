@@ -714,7 +714,7 @@ export default function PackOpeningPage({ params }: { params: { type: string } }
             <h2 className="text-xl font-bold font-pixel-heading text-shadow-balatro tracking-wider mb-2">
               PREMIUM PACK
             </h2>
-            <p className="text-lg text-game-gold font-bold mb-6">$1 USDC</p>
+            <p className="text-lg text-game-gold font-bold mb-6">100 PLAY</p>
 
             {paymentError && (
               <motion.div
