@@ -7,12 +7,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useUnifiedWalletContext } from '@jup-ag/wallet-adapter';
 import { VersionedTransaction } from '@solana/web3.js';
-import {
-  createPredictionOrder,
-  microToUsd,
-} from '@/lib/jupiter/prediction-api';
-import { getSolscanUrl } from '@/lib/jupiter/transaction';
-import { ShareButton } from './ShareButton';
+import { createPredictionOrder } from '@/lib/jupiter/prediction-api';
 import { isPSG1 } from '@/lib/platform';
 import { GP, isGamepadButtonPressed, getDpadDirection } from '@/lib/gamepad';
 import { playSound } from '@/lib/audio';
@@ -38,9 +33,6 @@ type PurchaseState =
 
 interface PurchaseResult {
   signature?: string;
-  contracts?: string;
-  totalCost?: number;
-  fee?: number;
   error?: string;
 }
 
@@ -189,18 +181,15 @@ export function PurchaseModal({
       const signature = await sendTransaction(tx, connection);
       addLog(`Sent! sig=${signature.slice(0, 16)}...`);
 
-      // Optimistic: show success immediately after tx is sent
-      // The transaction is already on the network, confirmation is just waiting for finality
+      // Wait for on-chain confirmation
+      setPurchaseState('confirming');
+      addLog('Waiting for on-chain confirmation...');
+      await connection.confirmTransaction(signature);
+      addLog('Transaction confirmed on-chain');
+
       playSound('purchase_success');
       setPurchaseState('success');
-      setPurchaseResult({
-        signature,
-        contracts: orderResponse.order.contracts,
-        totalCost: microToUsd(orderResponse.order.orderCostUsd),
-        fee: microToUsd(orderResponse.order.estimatedTotalFeeUsd),
-      });
-
-      onConfirm(selectedAmount);
+      setPurchaseResult({ signature });
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       addLog(`ERROR: ${errMsg}`);
@@ -218,7 +207,6 @@ export function PurchaseModal({
     isYes,
     outcome.probability,
     jupiterMarketId,
-    onConfirm,
     addLog,
   ]);
 
@@ -248,6 +236,15 @@ export function PurchaseModal({
   useEffect(() => {
     setPsg1FocusIndex(0);
   }, [purchaseState]);
+
+  // Auto-advance after success checkmark (~1.5s)
+  useEffect(() => {
+    if (purchaseState !== 'success' || !selectedAmount) return;
+    const timer = setTimeout(() => {
+      onConfirm(selectedAmount);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [purchaseState, selectedAmount, onConfirm]);
 
   // Auto-select amount when navigating in select_amount state (amounts row)
   useEffect(() => {
@@ -685,58 +682,18 @@ export function PurchaseModal({
                   </div>
                 )}
 
-                {/* Success state */}
-                {purchaseState === 'success' && purchaseResult.signature && (
-                  <div className="py-4 text-center">
-                    <div className="w-16 h-16 mx-auto mb-3 bg-green-500/20 rounded-full flex items-center justify-center">
-                      <span className="text-4xl">✓</span>
-                    </div>
-                    <p className="text-green-400 font-bold text-lg mb-2">Purchase Successful!</p>
-
-                    <div className="bg-white/5 rounded-lg p-3 mb-3 text-left">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-400">Contracts</span>
-                        <span className="text-white font-medium">{purchaseResult.contracts}</span>
-                      </div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-400">Total Cost</span>
-                        <span className="text-white font-medium">
-                          ${purchaseResult.totalCost?.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Fee</span>
-                        <span className="text-gray-400">
-                          ${purchaseResult.fee?.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <a
-                      href={getSolscanUrl(purchaseResult.signature)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block text-purple-400 hover:text-purple-300 text-sm underline mb-3"
+                {/* Success state — green checkmark, auto-advances */}
+                {purchaseState === 'success' && (
+                  <div className="py-8 text-center">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      className="w-20 h-20 mx-auto mb-4 bg-green-500/20 rounded-full flex items-center justify-center border-2 border-green-500"
                     >
-                      View on Solscan ↗
-                    </a>
-
-                    {/* Share button */}
-                    <div className="mb-3">
-                      <ShareButton
-                        outcome={outcome}
-                        market={market}
-                        direction={direction}
-                        amount={selectedAmount || undefined}
-                      />
-                    </div>
-
-                    <button
-                      onClick={handleCancel}
-                      className={`w-full py-2.5 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors ${psg1 ? 'psg1-focus' : ''}`}
-                    >
-                      Done
-                    </button>
+                      <span className="text-5xl text-green-400">✓</span>
+                    </motion.div>
+                    <p className="text-green-400 font-bold text-lg font-pixel-heading">Purchase Successful!</p>
                   </div>
                 )}
 

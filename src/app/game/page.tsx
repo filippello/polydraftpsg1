@@ -329,7 +329,7 @@ export default function GameHomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="text-balatro-base font-pixel-body text-game-gold mb-2 uppercase tracking-wider font-bold"
                     >
-                      $1 USDC
+                      100 $PLAY
                     </motion.p>
                     <div className="bg-white/[0.03] rounded-2xl border border-game-gold/30 p-4 backdrop-blur-sm">
                       <div className="flex items-end justify-center h-48 mb-2">
@@ -480,7 +480,7 @@ export default function GameHomePage() {
                       transition={{ duration: 1.5, repeat: Infinity }}
                       onClick={handleBuyPack}
                     >
-                      $1 USDC
+                      100 $PLAY
                     </motion.div>
                   </div>
                 </div>
