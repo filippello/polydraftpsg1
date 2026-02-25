@@ -1,6 +1,5 @@
 <p align="center">
-  <img src="public/icons/icon-512x512.png" alt="Polydraft" width="120" />
-</p>
+  <img width="1536" height="1024" alt="Image" src="https://github.com/user-attachments/assets/462b6cad-4243-416f-8ecd-eb81b46ab7e2" />
 
 <h1 align="center">Polydraft</h1>
 
@@ -20,7 +19,7 @@
 
 ## What is Polydraft?
 
-Polydraft is a prediction market gaming platform where players open packs of real-world prediction events, draft their picks, and earn points when outcomes resolve. Think fantasy sports meets trading cards — with real market data from Jupiter and Polymarket on Solana.
+Polydraft is a prediction market gaming platform where players open packs of real-world prediction events, draft their picks, and earn points when outcomes resolve. Think fantasy sports meets trading cards — with real market data from Jupiter Prediction Markets on Solana.
 
 Each pack contains 5 live prediction events. Swipe to pick outcomes, wait for the real world to play out, then reveal your results one by one. The harder the pick, the bigger the payout. Compete on the leaderboard and share your results.
 
@@ -33,7 +32,7 @@ Built with a retro pixel art aesthetic inspired by Balatro, designed for both we
 ## Features
 
 - **Pack-based prediction system** — 5 picks per pack, each a real prediction market event
-- **Real-time market data** — Live odds from Jupiter (Kalshi) and Polymarket
+- **Real-time market data** — Live odds from Jupiter Prediction Markets
 - **Retro pixel art aesthetic** — Balatro-inspired card design with rarity tiers
 - **Odds-based scoring** — Harder picks pay more, with tier bonuses for longshots
 - **Sequential reveal** — Cards reveal one by one as events resolve in the real world
@@ -56,19 +55,45 @@ Built with a retro pixel art aesthetic inspired by Balatro, designed for both we
           │              │              │
           ▼              ▼              ▼
 ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐
-│   Supabase   │ │    Solana    │ │   Venue Adapters     │
-│              │ │              │ │                      │
-│ PostgreSQL   │ │ SPL Token    │ │ ┌──────────────────┐ │
-│ Row-Level    │ │ Transfers    │ │ │   Polymarket     │ │
-│ Security     │ │              │ │ │   (Polygon)      │ │
-│ Auth         │ │ Anchor       │ │ ├──────────────────┤ │
-│              │ │ Program      │ │ │   Jupiter        │ │
-│              │ │ (Receipts)   │ │ │   (Kalshi API)   │ │
-└──────────────┘ └──────────────┘ │ └──────────────────┘ │
-                                  └──────────────────────┘
+│   Supabase   │ │    Solana    │ │  Jupiter Prediction  │
+│              │ │              │ │  Markets             │
+│ PostgreSQL   │ │ SPL Token    │ │                      │
+│ Row-Level    │ │ Transfers    │ │  Market data         │
+│ Security     │ │              │ │  Direct trading      │
+│ Auth         │ │ Anchor       │ │  Event capture       │
+│              │ │ Program      │ │  Resolution sync     │
+│              │ │ (Receipts)   │ │                      │
+└──────────────┘ └──────────────┘ └──────────────────────┘
 ```
 
-The **Venue Adapter pattern** makes market sources pluggable. Each adapter implements a common interface — `fetchMarkets`, `fetchPrices`, `checkResolution` — so new prediction market venues can be added without touching game logic.
+The architecture uses a **Venue Adapter pattern** that abstracts market data sources behind a common interface — `fetchMarkets`, `fetchPrices`, `checkResolution` — making it straightforward to integrate additional prediction market venues in the future.
+
+## Explore & Jupiter Integration
+
+### Market Discovery
+
+The **Explore** section lets players browse live prediction markets from Jupiter. Users can search, filter by category, and view real-time odds for any active market — all without opening a pack.
+
+### Direct Purchases via Jupiter Prediction Market API
+
+From Explore, users can buy prediction contracts directly through Jupiter's Prediction Market API:
+
+1. **User selects an outcome** — picks YES or NO on any market
+2. **API returns an unsigned `VersionedTransaction`** — built server-side with the exact trade parameters
+3. **Wallet signs** — user approves in Phantom, Magic Eden, or any Solana wallet
+4. **On-chain confirmation** — transaction settles on Solana
+
+This gives players a seamless trading experience without leaving the app, powered entirely by Jupiter's on-chain prediction market infrastructure.
+
+### Automated Event Pipeline
+
+Polydraft runs automated processes to keep market data fresh and resolve outcomes:
+
+- **Event capture** — Scheduled jobs poll Jupiter's API to discover and ingest new prediction markets, mapping them into Polydraft's event format automatically
+- **Price sync** — Periodic cron jobs update odds and probabilities for all active events
+- **Resolution tracking** — Automated polling detects when markets settle, triggers outcome resolution, and recalculates pack scores — no manual intervention required
+
+This pipeline ensures that packs always contain current, active markets and that results resolve as soon as the real-world outcome is known.
 
 ## Solana Integration
 
@@ -81,7 +106,7 @@ Polydraft uses the standard Solana Wallet Adapter with Jupiter's wallet integrat
 Premium packs are purchased on-chain. The flow:
 
 1. **User selects a pack** — frontend builds transaction
-2. **SPL token transfer** — USDC or PLAY tokens sent to treasury
+2. **SPL token transfer** — PLAY tokens sent to treasury
 3. **Wallet signs** — user approves in their wallet
 4. **Server verifies** — backend confirms the on-chain transaction
 5. **Pack created** — premium pack with payment receipt attached
@@ -203,7 +228,7 @@ See `.env.local.example` for the full list. Key variables:
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_VENUE` | Active prediction market venue (`polymarket` or `jupiter`) |
+| `NEXT_PUBLIC_VENUE` | Active prediction market venue (e.g. `jupiter`) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
@@ -226,7 +251,7 @@ src/
 │   ├── explore/      # OutcomeCarousel, PurchaseModal, ExploreGrid
 │   └── packs/        # Pack display and management
 ├── lib/              # Core business logic
-│   ├── adapters/     # Venue adapter pattern (Polymarket, Jupiter)
+│   ├── adapters/     # Venue adapter pattern (Jupiter Prediction Markets)
 │   ├── solana/       # On-chain purchase + verification
 │   ├── scoring/      # Odds-based scoring calculator
 │   ├── resolution/   # Sequential reveal state machine
