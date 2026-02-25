@@ -46,3 +46,6 @@ programs/**/target/
 # serwist service worker (generated)
 public/sw*
 public/swe-worker*
+
+# supabase CLI temp files
+supabase/.temp/
