@@ -3,6 +3,7 @@
 import { useEffect, useCallback, type ReactNode } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import bs58 from 'bs58';
+import { motion } from 'framer-motion';
 import { isPSG1 } from '@/lib/platform';
 import { useWalletAuthStore } from '@/stores/walletAuth';
 import { WalletButton } from '@/components/WalletButton';
@@ -107,6 +108,18 @@ function WalletAuthFlow({ children }: { children: ReactNode }) {
               {status === 'verifying' && 'Verifying signature...'}
               {status === 'connecting' && 'Connecting...'}
             </p>
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2.5 }}
+              onClick={() => {
+                setStatus('idle');
+                authenticate();
+              }}
+              className="mt-2 px-4 py-2 text-sm font-pixel-body bg-game-accent text-black rounded-lg hover:brightness-110 active:scale-95 transition"
+            >
+              Sign Message
+            </motion.button>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
