@@ -572,11 +572,6 @@ export function PurchaseModal({
                   {formatProbability(outcome.probability)}
                 </p>
 
-                {/* Wallet status debug */}
-                <p className="text-xs text-gray-500 text-center mb-3">
-                  Wallet: {connected ? `Connected (${publicKey?.toBase58().slice(0, 8)}...)` : wallet ? 'Not connected (wallet available)' : 'No wallet detected'}
-                </p>
-
                 {/* Connect wallet button when no wallet detected */}
                 {purchaseState === 'select_amount' && !connected && (
                   <div className="mb-3">
@@ -739,11 +734,11 @@ export function PurchaseModal({
                 {psg1 && !isProcessing && (
                   <div className="flex items-center justify-center gap-6 pt-3 mt-2 border-t border-white/10">
                     <div className="flex items-center gap-1.5 text-gray-500 text-sm">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold text-gray-400">B</span>
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold text-gray-400">A</span>
                       <span>Confirm</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-500 text-sm">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold text-gray-400">A</span>
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold text-gray-400">B</span>
                       <span>Cancel</span>
                     </div>
                   </div>

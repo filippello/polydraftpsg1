@@ -334,7 +334,7 @@ export function SwipeCard({ event, position, total, onSwipe, isTop, psg1Mode, ch
                 )}
                 <div className={`flex items-center gap-2 transition-colors ${chargeDirection === 'right' ? 'text-outcome-a' : 'text-outcome-a/60'}`}>
                   <span className="font-bold text-sm">{labelA}</span>
-                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">B</span>
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">A</span>
                 </div>
               </div>
             )}

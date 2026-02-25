@@ -1,8 +1,8 @@
 // Gamepad button indices (Standard Gamepad mapping, W3C spec)
 // Retroid Pocket 5 reports: A=0, B=1, X=2, Y=3
 export const GP = {
-  A: 0,  // bottom face button → Back
-  B: 1,  // right face button  → YES / Select
+  A: 1,  // right face button  → Select / Confirm
+  B: 0,  // bottom face button → Back / Cancel
   X: 2,  // left face button   → PASS
   Y: 3,  // top face button    → NO
   // D-pad buttons (standard mapping)

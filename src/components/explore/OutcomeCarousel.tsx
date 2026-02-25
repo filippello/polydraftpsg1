@@ -458,7 +458,7 @@ export function OutcomeCarousel({ market, outcomes, onBet, onBack, onComplete }:
                     </div>
                     <div className={`flex items-center gap-2 transition-colors ${chargeDirection === 'right' ? 'text-green-300' : 'text-green-400/60'}`}>
                       <span className="font-bold text-lg">YES</span>
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">B</span>
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">A</span>
                     </div>
                   </div>
                 )}
