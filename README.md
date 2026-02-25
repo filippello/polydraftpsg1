@@ -45,7 +45,7 @@ Built with a retro pixel art aesthetic inspired by Balatro, designed for both we
 - **PWA with offline support** — Installable, fullscreen, works offline
 - **Leaderboard** — Weekly and all-time rankings
 - **Share results** — Auto-generated OG images for social sharing
-- **Premium packs** — On-chain purchases via Solana (USDC / PLAY token)
+- **Premium packs** — On-chain purchases via Solana (PLAY token)
 
 ## Architecture
 
